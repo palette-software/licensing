@@ -9,3 +9,8 @@ Set the password for palette:
     Enter new password: palpass
     Enter it again:
     postgres=# \quit
+
+---
+
+sudo apt-get install -y autossh
+autossh -N -L 54321:localhost:5432 -i ~/.ssh/PaletteStandardKeyPair2014-02-16.pem ubuntu@licensing.palette-software.com

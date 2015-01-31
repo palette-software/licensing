@@ -1,0 +1,32 @@
+#!/usr/bin/env python
+# pylint: disable=invalid-name
+import sys
+import requests
+
+#URL = 'http://localhost:8080/license'
+URL = 'https://licensing.palette-software.com/license'
+KEY = 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX'
+SYSTEM_ID = 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX'
+TYPE = 'Named-User'
+QUANTITY = 100
+
+def main():
+    if len(sys.argv) > 2:
+        script = os.path.basename(sys.argv[0])
+        print >> sys.stderr, 'usage: ' + script + ' [license-key]'
+        sys.exit(1)
+    elif len(sys.argv) == 2:
+        key = sys.argv[1]
+    else:
+        key = KEY
+
+    payload = {'system-id': SYSTEM_ID,
+               'license-key': key,
+               'license-type': TYPE,
+               'license-quantity': QUANTITY}
+    res = requests.post(URL, payload)
+    res.raise_for_status()
+    print res.json()
+
+if __name__ == '__main__':
+    main()
