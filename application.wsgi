@@ -14,6 +14,11 @@ from akiri.framework.util import required_parameters
 from licensing import License
 from support import Support
 
+# FIXME: https
+LICENSE_EXPIRED = 'http://www.palette-software.com/license-expired'
+TRIAL_EXPIRED = 'http://www.palette-software.com/trial-expired'
+BUY = 'http://www.palette-software.com/buy'
+
 class LicensingApplication(GenericWSGIApplication):
 
     @required_parameters('system-id', 'license-key', \
@@ -53,6 +58,18 @@ class SupportApplication(GenericWSGIApplication):
         return {'port': port}
 
 
+class ExpiredApplication(GenericWSGIApplication):
+
+    def __init__(self, base_url):
+        super(ExpiredApplication, self).__init__()
+        self.base_url = base_url
+
+    def service_GET(self, req):
+        # pylint: disable=unused-argument
+        # FIXME: take 'key' and resolve.
+        raise exc.HTTPTemporaryRedirect(location=self.base_url)
+
+
 class HelloApplication(GenericWSGIApplication):
 
     def service_GET(self, req):
@@ -64,16 +81,19 @@ class HelloApplication(GenericWSGIApplication):
 # pylint: disable=invalid-name
 database = 'postgresql://palette:palpass@localhost/licensedb'
 create_engine(database, echo=False)
-license_app = SessionMiddleware(database, app=LicensingApplication())
-support_app = SessionMiddleware(database, app=SupportApplication())
 
-application = Router()
-application.add_route(r'/hello\Z', HelloApplication())
-application.add_route(r'/license\Z', license_app)
-application.add_route(r'/support\Z', support_app)
+router = Router()
+router.add_route(r'/hello\Z', HelloApplication())
+router.add_route(r'/license\Z', LicensingApplication())
+router.add_route(r'/support\Z', SupportApplication())
+router.add_route(r'/trial-expired\Z', ExpiredApplication(TRIAL_EXPIRED))
+router.add_route(r'/license-expired\Z', ExpiredApplication(LICENSE_EXPIRED))
+router.add_route(r'/buy\Z', ExpiredApplication(BUY))
+
+application = SessionMiddleware(database, app=router)
 
 if __name__ == '__main__':
     from akiri.framework.server import runserver
 
-    application.add_redirect(r'/\Z', 'http://www.palette-software.com')
+    router.add_redirect(r'/\Z', 'http://www.palette-software.com')
     runserver(application, use_reloader=True)
