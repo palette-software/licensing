@@ -9,6 +9,7 @@ from akiri.framework.sqlalchemy import Base
 # These are need for create_all().
 # pylint: disable=unused-import
 from licensing import License
+from support import Support
 # pylint: enable=unused-import
 
 def main():

@@ -12,6 +12,7 @@ from akiri.framework.sqlalchemy import create_engine, get_session
 from akiri.framework.util import required_parameters
 
 from licensing import License
+from support import Support
 
 class LicensingApplication(GenericWSGIApplication):
 
@@ -41,21 +42,35 @@ class LicensingApplication(GenericWSGIApplication):
         session.commit()
         return {'trial': entry.trial,
                 'expiration-time': str(entry.expiration_time)}
-        
+
+class SupportApplication(GenericWSGIApplication):
+
+    @required_parameters('key')
+    def service_GET(self, req):
+        port = Support.find_active_port_by_key(req.params['key'])
+        if port is None:
+            raise exc.HTTPNotFound()
+        return {'port': port}
+
 
 class HelloApplication(GenericWSGIApplication):
 
     def service_GET(self, req):
+        # pylint: disable=unused-argument
         # This could be tracked :).
         return str(datetime.now())
 
+
+# pylint: disable=invalid-name
 database = 'postgresql://palette:palpass@localhost/licensedb'
 create_engine(database, echo=False)
 license_app = SessionMiddleware(database, app=LicensingApplication())
+support_app = SessionMiddleware(database, app=SupportApplication())
 
 application = Router()
 application.add_route(r'/hello\Z', HelloApplication())
 application.add_route(r'/license\Z', license_app)
+application.add_route(r'/support\Z', support_app)
 
 if __name__ == '__main__':
     from akiri.framework.server import runserver

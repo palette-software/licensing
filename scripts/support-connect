@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+# pylint: disable=invalid-name
+import sys
+sys.path.append('/opt/palette')
+
+import os
+import pexpect
+import socket
+import time
+import argparse
+
+from akiri.framework.sqlalchemy import get_session
+from support import Support
+
+def main(entry, user=None):
+    cmd = 'ssh -p ' + str(entry.port) + ' '
+    if user:
+        cmd += user + '@'
+
+    cmd += 'localhost'
+    #verbose(cmd)
+
+    while True:
+        try:
+            s = socket.create_connection(('localhost', entry.port))
+        except socket.error:
+            #verbose(str(datetime.now()))
+            s = None
+        if s is None:
+            time.sleep(1)
+            continue
+        break
+
+    child = pexpect.spawn(cmd)
+
+    # hold the socket open until the *real* ssh client connects...
+    time.sleep(0.5)
+    s.close()
+
+    child.interact()
+    child.close()
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--verbose', '-v', action='store_true', default=False)
+    parser.add_argument('name', nargs=1)
+    args = parser.parse_args()
+    name = args.name[0]
+
+    data = {'__name__': ''}
+    if os.path.exists('application.wsgi'):
+        execfile('application.wsgi', data)
+    elif os.path.exists('/opt/palette/application.wsgi'):
+        execfile('/opt/palette/application.wsgi', data)
+    else:
+        print >> sys.stderr, "application.wsgi: file not found"
+        sys.exit(1)
+
+    support_entry = Support.get_by_name(name)
+    if support_entry is None:
+        print >> sys.stderr, "'" + name + "' not found."
+        sys.exit(1)
+    support_entry.active = True
+
+    session = get_session()
+    session.commit()
+
+    try:
+        main(support_entry)
+    finally:
+        support_entry.active = False
+        session.commit()
