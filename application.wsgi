@@ -82,7 +82,7 @@ class HelloApplication(GenericWSGIApplication):
 
 # pylint: disable=invalid-name
 database = 'postgresql://palette:palpass@localhost/licensedb'
-create_engine(database, echo=False)
+create_engine(database, echo=False, pool_size=20, max_overflow=50)
 
 router = Router()
 router.add_route(r'/hello\Z', HelloApplication())
