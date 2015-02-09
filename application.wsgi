@@ -50,8 +50,10 @@ class LicensingApplication(GenericWSGIApplication):
 
 class SupportApplication(GenericWSGIApplication):
 
-    @required_parameters('key')
     def service_GET(self, req):
+        if 'key' not in req.params:
+            # Return 404 instead of bad request to 'hide' this URL.
+            return exc.HTTPNotFound()
         port = Support.find_active_port_by_key(req.params['key'])
         if port is None:
             raise exc.HTTPNotFound()
