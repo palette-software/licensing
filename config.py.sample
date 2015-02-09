@@ -1,0 +1,15 @@
+DB_URL= 'postgresql://ldb:Tableau2014@localhost/ldb'
+MAILCHIMP_APIKEY= 'd5aebaeab75930485df70f3b1385b72c-us3'
+MAILCHIMP_TRIAL_REGISTERED_TITLE = 'Signup: Palette Trial Registered'
+MAILCHIMP_TRIAL_STARTED_TITLE = 'Signup: Palette Trial Started'
+MAILCHIMP_ACTIVE_CUSTOMER_TITLE = 'Signup: Palette Active Customer'
+MAILCHIMP_EXPIRED_CUSTOMER_TITLE = 'Signup: Palette License Expired'
+MAILCHIMP_DEBUG = False
+SALESFORCE_USERNAME = 'alison@palette-software.com'
+SALESFORCE_PASSWORD = 'Tableau2015!'
+SALESFORCE_TOKEN = 'IVlO8ic0dRfILRK0tYRtNEWj'
+SF_STAGE1 = 'Customer Trial'
+REGISTERED_EXPIRATION_DAYS = 30
+TRIAL_EXPIRATION_DAYS = 14
+SF_CLOSEDATE_DAYS = 30
+
