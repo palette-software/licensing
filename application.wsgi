@@ -63,8 +63,10 @@ class LicensingApplication(GenericWSGIApplication):
 
 class SupportApplication(GenericWSGIApplication):
 
-    @required_parameters('key')
     def service_GET(self, req):
+        if 'key' not in req.params:
+            # Return 404 instead of bad request to 'hide' this URL.
+            return exc.HTTPNotFound()
         port = Support.find_active_port_by_key(req.params['key'])
         if port is None:
             raise exc.HTTPNotFound()
@@ -308,7 +310,7 @@ class LicenseProcess():
            time.sleep(1000)
 
 # pylint: disable=invalid-name
-create_engine(config.DB_URL, echo=False)
+create_engine(config.DB_URL, echo=False, pool_size=20, max_overflow=50)
 
 router = Router()
 router.add_route(r'/hello\Z', HelloApplication())
