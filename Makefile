@@ -2,7 +2,7 @@ include pylint.mk
 PEM := ~/.ssh/PaletteStandardKeyPair2014-02-16.pem
 URL := ubuntu@licensing.palette-software.com
 
-FILES := application.wsgi licensing.py support.py
+FILES := application.wsgi licensing.py support.py utils.py
 SCRIPTS := \
 	license-start \
 	license-start-trial \
@@ -26,6 +26,6 @@ publish:
 	cd scripts && scp -i $(PEM) $(SCRIPTS) $(URL):/tmp
 	scp -i $(PEM) scripts/create-tables $(URL):
 	ssh -i $(PEM) $(URL) sudo mv /tmp/license-\* /tmp/support-\* /usr/local/bin/
-	ssh -i $(PEM) $(URL) sudo service apache2 reload
+	#ssh -i $(PEM) $(URL) sudo service apache2 reload
 .PHONY: publish
 

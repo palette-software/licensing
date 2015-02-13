@@ -54,10 +54,10 @@ class SupportApplication(GenericWSGIApplication):
         if 'key' not in req.params:
             # Return 404 instead of bad request to 'hide' this URL.
             return exc.HTTPNotFound()
-        port = Support.find_active_port_by_key(req.params['key'])
-        if port is None:
+        entry = Support.find_active_port_by_key(req.params['key'])
+        if entry is None:
             raise exc.HTTPNotFound()
-        return {'port': port}
+        return {'port': entry.port}
 
 
 class ExpiredApplication(GenericWSGIApplication):

@@ -33,16 +33,19 @@ def main():
         print >> sys.stderr, "'port' must be a number."
         sys.exit(1)
 
-    license_entry = License.get_by_name(name)
-    if license_entry is None:
-        print >> sys.stderr, "'" + name + "' not found."
-        sys.exit(1)
-
     session = get_session()
-    support_entry = Support()
-    support_entry.license_id = license_entry.id
-    support_entry.port = port
-    session.add(support_entry)
+    entry = Support.get_by_name(name)
+    if entry is None:
+        license_entry = License.get_by_name(name)
+        if license_entry is None:
+            print >> sys.stderr, "'" + name + "' not found."
+            sys.exit(1)
+
+        entry = Support()
+        entry.license_id = license_entry.id
+        session.add(entry)
+
+    entry.port = port
     session.commit()
 
 if __name__ == '__main__':

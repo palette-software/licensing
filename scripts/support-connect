@@ -9,22 +9,29 @@ import socket
 import time
 import argparse
 
+from datetime import datetime
+
 from akiri.framework.sqlalchemy import get_session
+
 from support import Support
+from utils import set_verbosity, verbose, fatal
 
-def main(entry, user=None):
-    cmd = 'ssh -p ' + str(entry.port) + ' '
-    if user:
-        cmd += user + '@'
+USER = 'palette'
 
-    cmd += 'localhost'
-    #verbose(cmd)
+def connect(session, entry):
+
+    entry.active = True
+    session.commit()
+
+    port = entry.port
+    cmd = 'ssh -p ' + str(port) + ' ' + USER + '@localhost'
+    verbose(cmd)
 
     while True:
         try:
-            s = socket.create_connection(('localhost', entry.port))
+            s = socket.create_connection(('localhost', port))
         except socket.error:
-            #verbose(str(datetime.now()))
+            verbose(str(datetime.now()))
             s = None
         if s is None:
             time.sleep(1)
@@ -40,12 +47,13 @@ def main(entry, user=None):
     child.interact()
     child.close()
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose', '-v', action='store_true', default=False)
     parser.add_argument('name', nargs=1)
-    args = parser.parse_args()
-    name = args.name[0]
+    parser_args = parser.parse_args()
+    name = parser_args.name[0]
+    set_verbosity(parser_args.verbose)
 
     data = {'__name__': ''}
     if os.path.exists('application.wsgi'):
@@ -56,17 +64,16 @@ if __name__ == '__main__':
         print >> sys.stderr, "application.wsgi: file not found"
         sys.exit(1)
 
-    support_entry = Support.get_by_name(name)
-    if support_entry is None:
-        print >> sys.stderr, "'" + name + "' not found."
-        sys.exit(1)
-    support_entry.active = True
-
     session = get_session()
-    session.commit()
+    entry = Support.get_by_name(name)
+    if entry is None:
+        fatal("'%s' was not found in table.", name)
 
     try:
-        main(support_entry)
+        connect(session, entry)
     finally:
-        support_entry.active = False
+        entry.active = False
         session.commit()
+
+if __name__ == '__main__':
+    main()
