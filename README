@@ -1,4 +1,4 @@
-sudo apt-get install -y postgresql python-psycopg2
+sudo apt-get install -y postgresql python-psycopg2 python-dateutil
 sudo -u postgres createuser --superuser palette
 sudo -u postgres createuser --superuser $USER
 sudo -u postgres createdb licensing
