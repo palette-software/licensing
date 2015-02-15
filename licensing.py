@@ -92,13 +92,12 @@ class License(Base):
             return None
 
     @classmethod
-    def get_expired_licenes(cls, stage):
+    def get_expired_licenses(cls, stage):
         session = get_session()
         now = datetime.utcnow()
         try:
-            rows = session.query(License).filter(License.active == True) \
-                                         .filter(License.stage == stage) \
-                                         .filter(Licnese.expiration_time < now)
+            rows = session.query(License).filter(License.stage == stage) \
+                                         .filter(License.expiration_time < now)
         except NoResultFound:
             return None
         return rows

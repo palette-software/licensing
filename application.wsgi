@@ -116,7 +116,8 @@ class TrialRequestApplication(GenericWSGIApplication):
                   'website', 'hosting_type', 'subdomain']
         entry.set_fields(req.params, names, fields)
         entry.key = str(uuid.uuid4())
-        entry.expiration_time = time_from_today(days=config.TRIAL_REQ_EXPIRATION_DAYS) 
+        entry.expiration_time = \
+               time_from_today(days=config.TRIAL_REQ_EXPIRATION_DAYS) 
         entry.stage = config.SF_STAGE_TRIAL_REQUESTED
 
         session = get_session()
@@ -132,7 +133,7 @@ class TrialRequestApplication(GenericWSGIApplication):
 
         print 'Trial request success for {0} {1}'.format(entry.email, entry.key)
 
-        return 'license-key={0}'.format(key)
+        return {'license-key' :entry.key }
 
 class TrialRegisterApplication(GenericWSGIApplication):
     @required_parameters('system-id', 'license-key', \
@@ -168,7 +169,8 @@ class TrialRegisterApplication(GenericWSGIApplication):
         entry.n = license_quantity
 
         entry.stage = config.SF_STAGE_TRIAL_REGISTERED
-        entry.expiration_time = time_from_today(days=config.TRIAL_REQ_EXPIRATION_DAYS)
+        entry.expiration_time = \
+              time_from_today(days=config.TRIAL_REQ_EXPIRATION_DAYS)
         session = get_session()
         session.commit()
 
@@ -213,7 +215,8 @@ class TrialStartApplication(GenericWSGIApplication):
         entry.n = license_quantity
 
         entry.stage = config.SF_STAGE_TRIAL_STARTED
-        entry.expiration_time = time_from_today(days=config.TRIAL_REG_EXPIRATION_DAYS)
+        entry.expiration_time = \
+              time_from_today(days=config.TRIAL_REG_EXPIRATION_DAYS)
         session = get_session()
         session.commit()
 
@@ -262,7 +265,8 @@ class BuyRequestApplication(GenericWSGIApplication):
         fields = ['firstname', 'lastname', 'organization', 'email', 'phone', \
                   'palette_type', 'license_type', 'license_cap', \
                   'billing_address_line1', 'billing_address_line2', \
-                  'billing_city', 'billing_state', 'billing_zip', 'billing_country']
+                  'billing_city', 'billing_state', 'billing_zip', \
+                  'billing_country']
         entry.set_fields(req.params, names, fields)
 
         alt_billing = req.params['Field225']
@@ -270,44 +274,17 @@ class BuyRequestApplication(GenericWSGIApplication):
             entry.alt_billing = True
             names = ['Field11', 'Field12', 'Field20', 'Field19', 'Field13', \
                      'Field14', 'Field15', 'Field16', 'Field17', 'Field18']
-            fields = ['billing_fn', 'billing_ln', 'billing_email', 'billing_phone']
+            fields = ['billing_fn', 'billing_ln', 'billing_email', \
+                      'billing_phone']
             entry.set_fields(req.params, names, fields)
 
-        entry.expiration_time = time_from_today(months=config.BUY_EXPIRATION_MONTHS)
+        entry.expiration_time = \
+              time_from_today(months=config.BUY_EXPIRATION_MONTHS)
         entry.stage = config.SF_STAGE_CLOSED_WON
         session = get_session()
         session.commit()
 
         print 'Buy request success for {0}'.format(key)
-
-class LicenseProcess():
-    def CheckExpired(self):
-        rows = License.get_expired_licenses(config.SF_STAGE_TRIAL_REQUESTED)
-        for i in rows:
-            print 'Trial requests expired {0}'.format(i)
-            License.change_stage(i, config.SF_STAGE_TRIAL_NOT_INSTALLED)
-
-        rows = License.get_expired_licenses(config.SF_STAGE_TRIAL_REGISTERED)
-        for i in rows:
-            print 'Expired Registrations {0}'.format(i)
-            License.change_stage(i, config.SF_STAGE_NO_RESPONSE)
-
-        rows = License.get_expired_licenses(config.SF_STAGE_TRIAL_STARTED)
-        for i in rows:
-            print 'Expired Trials {0}'.format(i)
-            License.change_stage(i, config.SF_STAGE_TRIAL_EXPIRED)
-
-        rows = License.get_expired_licenses(config.SF_STAGE_CLOSED_WON)
-        for i in rows:
-            print 'Expired Closed Won {0}'.format(i)
-            License.change_stage(i, config.SF_STAGE_UP_FOR_RENEWAL)
-
-    """
-    """
-    def Start(self):
-        while True:
-           CheckExpired()
-           time.sleep(1000)
 
 # pylint: disable=invalid-name
 create_engine(config.DB_URL, echo=False)
