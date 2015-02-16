@@ -6,8 +6,6 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from webob import exc
 import uuid
-import time
-import json
 import logging
 
 from akiri.framework import GenericWSGIApplication
@@ -23,6 +21,15 @@ from salesforce_api import SalesforceAPI
 
 import config
 
+# Setup logging
+logger = logging.getLogger('licensing')
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+formatter = logging.Formatter(\
+                    '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 # FIXME: https
 LICENSE_EXPIRED = 'http://www.palette-software.com/license-expired'
@@ -30,7 +37,20 @@ TRIAL_EXPIRED = 'http://www.palette-software.com/trial-expired'
 BUY = 'http://www.palette-software.com/buy'
 
 def time_from_today(hours=0, days=0, months=0):
-    return datetime.today() + relativedelta(hours=hours, days=days, months=months)
+    return datetime.today() + \
+           relativedelta(hours=hours, days=days, months=months)
+
+def check_fields(params, names):
+    for i in names:
+        if not i in params:
+            logger.error('Parameter {0} not specified'.format(i))
+            raise exc.HTTPNotFound()
+
+def kvp(k, v):
+    if v is not None:
+        return str(k) + '=' + str(v)
+    else:
+        return str(k) + '='
 
 class LicensingApplication(GenericWSGIApplication):
 
@@ -105,8 +125,8 @@ class TrialRequestApplication(GenericWSGIApplication):
         hosting_type = req.params['Field8']
         subdomain = req.params['Field9']
 
-        print 'New trial request for {0} {1} {2}'\
-              .format(org, fullname, email)
+        logger.info('New trial request for {0} {1} {2}'\
+              .format(org, fullname, email))
 
         # fixme add exception handling
         entry = License()
@@ -126,56 +146,66 @@ class TrialRequestApplication(GenericWSGIApplication):
 
         # create or use an existing opportunity
         SalesforceAPI.new_opportunity(entry)
-
         # subscribe the user to the trial workflow if not already
         MailchimpAPI.subscribe_user(config.MAILCHIMP_TRIAL_REQUESTED_ID, \
                                     entry)
 
-        print 'Trial request success for {0} {1}'.format(entry.email, entry.key)
+        logger.info('Trial request success for {0} {1}'\
+                    .format(entry.email, entry.key))
 
-        return {'license-key' :entry.key }
+        return {'license-key' :entry.key}
 
 class TrialRegisterApplication(GenericWSGIApplication):
     @required_parameters('system-id', 'license-key', \
                          'license-type', 'license-quantity')
     def service_POST(self, req):
-        """
+        """ Handle a Trial Registration
         """
         key = req.params['license-key']
         entry = License.get_by_key(key)
         if entry is None:
             raise exc.HTTPNotFound()
 
-        print 'Processing Trial Registration for key {0}'.format(key)
+        #if entry.stage is not config.SF_STAGE_TRIAL_REQUESTED:
+        #    raise exc.HTTPTemporaryRedirect(location=config.BAD_STAGE_URL)
+
+        logger.info('Processing Trial Registration for key {0}'.format(key))
         system_id = req.params['system-id']
         if entry.system_id and entry.system_id != system_id:
-            print 'Invalid trial register request for key {0}. \
+            logger.error('Invalid trial register request for key {0}. \
                    System id from request {1} doesnt match DB {2}'\
-                   .format(key, system_id, entry.system_id)
+                   .format(key, system_id, entry.system_id))
         entry.system_id = system_id
 
         license_type = req.params['license-type']
         if entry.type and entry.type != license_type:
-            print 'Invalid trial register request for key {0}. \
+            logger.error('Invalid trial register request for key {0}. \
                    License Type from request {1} doesnt match DB {2}'\
-                   .format(key, license_type, entry.type)
+                   .format(key, license_type, entry.type))
         entry.type = license_type
 
         license_quantity = req.params['license-quantity']
         if entry.n and entry.n != license_quantity:
-            print 'Invalid trial register request for key {0}. \
+            logger.error('Invalid trial register request for key {0}. \
                    License Type from request {1} doesnt match DB {2}'\
-                   .format(key, license_quantitity, entry.n)
+                   .format(key, license_quantity, entry.n))
         entry.n = license_quantity
 
         entry.stage = config.SF_STAGE_TRIAL_REGISTERED
         entry.expiration_time = \
               time_from_today(days=config.TRIAL_REQ_EXPIRATION_DAYS)
+        entry.registration_start_time = datetime.utcnow()
         session = get_session()
         session.commit()
 
-        print 'Trial Registration for key {0} success. Expiration {1}'\
-              .format(key, entry.expiration_time)
+        # update the opportunity
+        SalesforceAPI.update_opportunity(entry)
+        # subscribe the user to the trial workflow if not already
+        MailchimpAPI.subscribe_user(config.MAILCHIMP_TRIAL_REGISTERED_ID, \
+                                    entry)
+
+        logger.info('Trial Registration for key {0} success. Expiration {1}'\
+              .format(key, entry.expiration_time))
 
         return {'trial': True,
                 'stage': entry.stage,
@@ -185,43 +215,54 @@ class TrialStartApplication(GenericWSGIApplication):
     @required_parameters('system-id', 'license-key', \
                          'license-type', 'license-quantity')
     def service_POST(self, req):
-        """
+        """ Handle a Trial start
         """
         key = req.params['license-key']
         entry = License.get_by_key(key)
         if entry is None:
             raise exc.HTTPNotFound()
 
-        print 'Processing Trial Start for key {0}'.format(key)
+        #if entry.stage is not config.SF_STAGE_TRIAL_REGISTERED:
+        #    raise exc.HTTPTemporaryRedirect(location=config.BAD_STAGE_URL)
+
+        logger.info('Processing Trial Start for key {0}'.format(key))
+
         system_id = req.params['system-id']
         if entry.system_id and entry.system_id != system_id:
-            print 'Invalid trial start request for key {0}. \
+            logger.error('Invalid trial start request for key {0}. \
                    System id from request {1} doesnt match DB {2}'\
-                   .format(key, system_id, entry.system_id)
+                   .format(key, system_id, entry.system_id))
         entry.system_id = system_id
 
         license_type = req.params['license-type']
         if entry.type and entry.type != license_type:
-            print 'Invalid trial start request for key {0}. \
+            logger.error('Invalid trial start request for key {0}. \
                    License Type from request {1} doesnt match DB {2}'\
-                   .format(key, license_type, entry.type)
+                   .format(key, license_type, entry.type))
         entry.type = license_type
 
         license_quantity = req.params['license-quantity']
         if entry.n and entry.n != license_quantity:
-            print 'Invalid trial start request for key {0}. \
+            logger.error('Invalid trial start request for key {0}. \
                    License Type from request {1} doesnt match DB {2}'\
-                   .format(key, license_quantitity, entry.n)
+                   .format(key, license_quantity, entry.n))
         entry.n = license_quantity
 
         entry.stage = config.SF_STAGE_TRIAL_STARTED
         entry.expiration_time = \
               time_from_today(days=config.TRIAL_REG_EXPIRATION_DAYS)
+        entry.trial_start_time = datetime.utcnow()
         session = get_session()
         session.commit()
 
-        print 'Trial Start for key {0} success. Expiration {1}'\
-              .format(key, entry.expiration_time)
+        # update the opportunity
+        SalesforceAPI.update_opportunity(entry)
+        # subscribe the user to the trial workflow if not already
+        MailchimpAPI.subscribe_user(config.MAILCHIMP_TRIAL_STARTED_ID, \
+                                    entry)
+
+        logger.info('Trial Start for key {0} success. Expiration {1}'\
+              .format(key, entry.expiration_time))
 
         return {'trial': True,
                 'stage': entry.stage,
@@ -237,36 +278,45 @@ class BuyRequestApplication(GenericWSGIApplication):
         if entry is None:
             raise exc.HTTPNotFound()
 
-        print 'Returning buy request info for {0}'.format(key)
+        #if entry.stage is not config.SF_STAGE_TRIAL_STARTED:
+        #    raise exc.HTTPTemporaryRedirect(location=config.BAD_STAGE_URL)
+
+        logger.info('Returning buy request info for {0}'.format(key))
 
         fields = [7, 3, 4, 5, 6, 21, 9]
         fieldnames = ['field{0}'.format(i) for i in fields]
         values = [entry.key, entry.firstname, entry.lastname, entry.email, \
                   entry.organization, entry.phone, entry.n]
         parameters = dict(zip(fieldnames, values))
-        url_items = [str(k) + '=' + str(v) for k, v in parameters.iteritems()]
+
+        url_items = [kvp(k, v) for k, v in parameters.iteritems()]
         url = '&'.join(url_items)
         location = '{0}/{1}'.format(config.BUY_URL, url)
         raise exc.HTTPTemporaryRedirect(location=location)
 
     def service_POST(self, req):
-        """
+        """ Handle a Buy Request
         """
         key = req.params['Field7']
         entry = License.get_by_key(key)
         if entry is None:
             raise exc.HTTPNotFound()
 
-        print 'Buy request for {0}'.format(key)
+        #if entry.stage is not config.SF_STAGE_TRIAL_STARTED:
+        #    raise exc.HTTPTemporaryRedirect(location=config.BAD_STAGE_URL)
+
+        logger.info('Buy request for {0}'.format(key))
 
         names = ['Field3', 'Field4', 'Field6', 'Field5', 'Field21', \
-                 'Field22', 'Field8', 'Field9', 'Field13', \
-                 'Field14', 'Field15', 'Field16', 'Field17', 'Field18']
+                 'Field22', 'Field8', 'Field9', \
+                 'Field13', 'Field14', 'Field15', 'Field16', 'Field17', \
+                 'Field18']
         fields = ['firstname', 'lastname', 'organization', 'email', 'phone', \
                   'palette_type', 'license_type', 'license_cap', \
                   'billing_address_line1', 'billing_address_line2', \
                   'billing_city', 'billing_state', 'billing_zip', \
                   'billing_country']
+        check_fields(req.params, names)
         entry.set_fields(req.params, names, fields)
 
         alt_billing = req.params['Field225']
@@ -276,15 +326,23 @@ class BuyRequestApplication(GenericWSGIApplication):
                      'Field14', 'Field15', 'Field16', 'Field17', 'Field18']
             fields = ['billing_fn', 'billing_ln', 'billing_email', \
                       'billing_phone']
+            check_fields(req.params, names)
             entry.set_fields(req.params, names, fields)
 
         entry.expiration_time = \
               time_from_today(months=config.BUY_EXPIRATION_MONTHS)
+        entry.license_start_time = datetime.utcnow()
         entry.stage = config.SF_STAGE_CLOSED_WON
         session = get_session()
         session.commit()
 
-        print 'Buy request success for {0}'.format(key)
+        # update the opportunity
+        SalesforceAPI.update_opportunity(entry)
+        # subscribe the user to the trial workflow if not already
+        MailchimpAPI.subscribe_user(config.MAILCHIMP_CLOSED_WON_ID, \
+                                    entry)
+
+        logger.info('Buy request success for {0}'.format(key))
 
 # pylint: disable=invalid-name
 create_engine(config.DB_URL, echo=False, pool_size=20, max_overflow=50)

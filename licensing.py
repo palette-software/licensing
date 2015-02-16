@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from akiri.framework.sqlalchemy import Base, get_session
 
 from sqlalchemy import Column, String, Integer, Boolean, DateTime, func
@@ -16,7 +16,10 @@ class License(Base):
     key = Column(String, nullable=False, unique=True)
 
     # The Tableau License Type
-    type = Column(String)       
+    type = Column(String)
+
+    # Name
+    name = Column(String)
 
     # The tableau license count
     n = Column(String)
@@ -36,7 +39,7 @@ class License(Base):
     # Time/date of when the Trial got registered
     registration_start_time = Column(DateTime)
 
-    # Time/date when the Trial was started 
+    # Time/date when the Trial was started
     trial_start_time = Column(DateTime)
 
     # Time/date when the Tableau was bought
