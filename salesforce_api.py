@@ -112,15 +112,17 @@ class SalesforceAPI():
                               })
 
     @classmethod
-    def update_opportunity(cls, name, data):
+    def update_opportunity(cls, data):
         """ Update a Salesforce Opportunity
         """
         opp = sf.query("""SELECT Name, id FROM Opportunity
-                          where Name='{0}'""".format(name))
+                          where Palette_License_Key__c='{0}'""".\
+                          format(data.key))
+        print opp
         if opp is not None and opp['totalSize'] == 1:
-            oppid = opp['id']
+            oppid = opp['records'][0]['Id']
             sf.Opportunity.update(oppid, 
-                 {'Stage':data.stage, \
+                 {'StageName':data.stage, \
                   'CloseDate':data.expiration_time.isoformat() \
                  })
 
