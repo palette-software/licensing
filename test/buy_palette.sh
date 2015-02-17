@@ -1,6 +1,6 @@
 SERVER=http://localhost:8080
 URL=$SERVER/api/licensing/buy_request
-KEY='f4f70cbb-5fd6-423c-b761-0eed65dc32fe'
+KEY=$1
 
 # Legend
 # names = ['Field3', 'Field4', 'Field6', 'Field5', 'Field21', \

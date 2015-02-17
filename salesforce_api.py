@@ -1,11 +1,14 @@
 from datetime import datetime
 from simple_salesforce import Salesforce
+import logging
 
-import config
+from config import get_config
 
-sf = Salesforce(username=config.SALESFORCE_USERNAME,
-                password=config.SALESFORCE_PASSWORD,
-                security_token=config.SALESFORCE_TOKEN)
+sf = Salesforce(username=get_config('salesforce_username'),
+                password=get_config('salesforce_password'),
+                security_token=get_config('salesforce_token'))
+
+logger = logging.getLogger('licensing')
 
 class SalesforceAPI():
     """ Class that uses the salesforce python module to create
@@ -32,8 +35,8 @@ class SalesforceAPI():
             account = sf.Account.create({'Name':data.organization, \
                                          'Phone':data.phone})
             accountid = account['id']
-            print 'Creating Account Name {0} Id {1}'.format(data.organization, \
-                                                       accountid)
+            logger.info('Creating Account Name {0} Id {1}'\
+                         .format(data.organization, accountid))
 
         return accountid
 
@@ -46,9 +49,8 @@ class SalesforceAPI():
             sf.Account.update(accountid, 
                  {'Name':data.organization, \
                   'Phone':data.phone})
-            print 'Updating Account Name {0} Id {1}'.format(data.organization, \
-                                                       accountid)
-
+            logger.info('Updating Account Name {0} Id {1}'\
+                        .format(data.organization, accountid))
 
     @classmethod
     def lookup_contact(cls, data):
@@ -74,9 +76,8 @@ class SalesforceAPI():
                                          'Email':data.email, \
                                          'Phone':data.phone})
             contactid = contact['id']
-            print 'Creating Contact Name {0} Id {1}'.format(data.firstname, \
-                                                            data.lastname, \
-                                                            contactid)
+            logger.info('Creating Contact Name {0} Id {1}'\
+                        .format(data.firstname, data.lastname, contactid))
 
         return contactid
 
@@ -90,8 +91,8 @@ class SalesforceAPI():
                                          'Lastname':data.lastname, \
                                          'Email':data.email, \
                                          'Phone':data.phone})
-            print 'Updating Contact Name {0} {1} Id {1}'.\
-                       format(data.firstname, data.lastname, contactid)
+            logger.info('Updating Contact Name {0} {1} Id {1}'.\
+                       format(data.firstname, data.lastname, contactid))
 
     @classmethod
     def new_opportunity(cls, data):
@@ -110,6 +111,9 @@ class SalesforceAPI():
                               'Palette_License_Key__c': data.key, \
                               'Palette_Server_Time_Zone__c': data.timezone \
                               })
+        logger.info('Creating new opportunityContact \
+                     Name {0} {1} Account Id {1}'.\
+                     format(data.firstname, data.lastname, accountid))
 
     @classmethod
     def update_opportunity(cls, data):
@@ -118,8 +122,10 @@ class SalesforceAPI():
         opp = sf.query("""SELECT Name, id FROM Opportunity
                           where Palette_License_Key__c='{0}'""".\
                           format(data.key))
-        print opp
         if opp is not None and opp['totalSize'] == 1:
+            logger.info('Updating opportunity Key {0} Stage {1}'\
+                     .format(data.key, data.stage))
+
             oppid = opp['records'][0]['Id']
             sf.Opportunity.update(oppid, 
                  {'StageName':data.stage, \
