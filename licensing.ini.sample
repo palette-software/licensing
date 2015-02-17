@@ -20,11 +20,11 @@ sf_stage_trial_registered   = Trial Registered
 sf_stage_trial_notinstalled = Trial Not Installed
 sf_stage_trial_noresponse   = Trial No Response
 sf_stage_trial_started      = Trial Started
-sf_stage_trial_exppired     = Trial Expired
+sf_stage_trial_expired      = Trial Expired
 sf_stage_trial_extended     = Trial Extended
 sf_stage_license_expired    = License Expired
 sf_stage_up_for_renewal     = Up For Renewal
-sf_stage_closed_woni        = Closed Won
+sf_stage_closed_won         = Closed Won
 
 trial_req_expiration_days   = 30
 trial_reg_expiration_days   = 14
@@ -32,3 +32,5 @@ buy_expiration_months       = 12
 
 buy_url = https://palettesoftware.wufoo.com/forms/buy-palette/def
 bad_stage_url = http://palette-software.com/
+
+license_check_interval      = 60

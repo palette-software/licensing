@@ -12,3 +12,6 @@ def get_config_int(name):
 
 def get_config_bool(name):
      return config.getboolean('config', name)
+
+def get_config_float(name):
+     return config.getfloat('config', name)
