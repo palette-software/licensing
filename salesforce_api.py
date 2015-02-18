@@ -3,6 +3,7 @@ from simple_salesforce import Salesforce
 import logging
 
 from config import get_config
+from stage import Stage
 
 sf = Salesforce(username=get_config('salesforce_username'),
                 password=get_config('salesforce_password'),
@@ -106,7 +107,7 @@ class SalesforceAPI():
                datetime.utcnow().isoformat()
 
         sf.Opportunity.create({'Name':name, 'AccountId':accountid, \
-                              'StageName': data.stage, \
+                              'StageName': Stage.get_by_id(data.stageid).name, \
                               'CloseDate': data.expiration_time.isoformat(), \
                               'Palette_License_Key__c': data.key, \
                               'Palette_Server_Time_Zone__c': data.timezone \
@@ -124,11 +125,11 @@ class SalesforceAPI():
                           format(data.key))
         if opp is not None and opp['totalSize'] == 1:
             logger.info('Updating opportunity Key {0} Stage {1}'\
-                     .format(data.key, data.stage))
+                     .format(data.key, Stage.get_by_id(data.stageid).name))
 
             oppid = opp['records'][0]['Id']
             sf.Opportunity.update(oppid, 
-                 {'StageName':data.stage, \
+                 {'StageName':Stage.get_by_id(data.stageid).name, \
                   'CloseDate':data.expiration_time.isoformat() \
                  })
 

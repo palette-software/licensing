@@ -3,7 +3,10 @@ from __future__ import absolute_import
 from datetime import datetime
 from akiri.framework.sqlalchemy import Base, get_session
 
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, func
+from sqlalchemy import Column, String, BigInteger, Integer, Boolean, \
+                       DateTime, func
+from sqlalchemy.schema import ForeignKey, UniqueConstraint
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm.exc import NoResultFound
 
 class License(Base):
@@ -28,7 +31,8 @@ class License(Base):
     system_id = Column(String)
 
     # Stage in try/buy workflow
-    stage = Column(String, nullable=False)
+    #stage = Column(String, nullable=False)
+    stageid = Column(Integer, ForeignKey("stage.id"))
 
     # Last connection from Palette Server to licensing
     contact_time = Column(DateTime)

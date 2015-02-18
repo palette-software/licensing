@@ -14,6 +14,7 @@ from akiri.framework.middleware.sqlalchemy import SessionMiddleware
 from akiri.framework.sqlalchemy import create_engine, get_session
 from akiri.framework.util import required_parameters
 
+from stage import Stage
 from licensing import License
 from support import Support
 from mailchimp_api import MailchimpAPI
@@ -128,17 +129,17 @@ class TrialRequestApplication(GenericWSGIApplication):
         logger.info('New trial request for {0} {1} {2}'\
               .format(org, fullname, email))
 
-        # fixme add exception handling
         entry = License()
         fields = {'Field1':'firstname', 'Field2':'lastname', 'Field3':'email', \
                  'Field6':'organization', 'Field115':'website', \
                  'Field8':'hosting_type', 'Field9':'subdomain'}
         entry.set_values(req.params, entry, fields)
 
+        entry.name = org
         entry.key = str(uuid.uuid4())
         entry.expiration_time = \
             time_from_today(days=get_config_int('trial_req_expiration_days'))
-        entry.stage = get_config('sf_stage_trial_requested')
+        entry.stageid = Stage.get_by_key('stage_trial_requested').id
 
         session = get_session()
         session.add(entry)
@@ -191,10 +192,11 @@ class TrialRegisterApplication(GenericWSGIApplication):
                    .format(key, license_quantity, entry.n))
         entry.n = license_quantity
 
-        entry.stage = get_config('sf_stage_trial_registered')
+        entry.stageid = Stage.get_by_key('stage_trial_registered').id
         entry.expiration_time = \
               time_from_today(days=get_config_int('trial_req_expiration_days'))
         entry.registration_start_time = datetime.utcnow()
+        entry.contact_time = datetime.utcnow()
         session = get_session()
         session.commit()
 
@@ -208,7 +210,7 @@ class TrialRegisterApplication(GenericWSGIApplication):
               .format(key, entry.expiration_time))
 
         return {'trial': True,
-                'stage': entry.stage,
+                'stage': Stage.get_by_id(entry.stageid).name,
                 'expiration-time': str(entry.expiration_time)}
 
 class TrialStartApplication(GenericWSGIApplication):
@@ -248,12 +250,25 @@ class TrialStartApplication(GenericWSGIApplication):
                    .format(key, license_quantity, entry.n))
         entry.n = license_quantity
 
-        entry.stage = get_config('sf_stage_trial_started')
-        entry.expiration_time = \
-              time_from_today(days=get_config_int('trial_reg_expiration_days'))
-        entry.trial_start_time = datetime.utcnow()
         session = get_session()
-        session.commit()
+
+        if entry.stageid != Stage.get_by_key('stage_trial_started').id:
+            # if this is the trial hasnt started yet start it
+            entry.stageid = Stage.get_by_key('stage_trial_started').id
+            entry.expiration_time = \
+                time_from_today(days=get_config_int('trial_reg_expiration_days'))
+            entry.trial_start_time = datetime.utcnow()
+            session.commit()
+
+            # update the opportunity
+            SalesforceAPI.update_opportunity(entry)
+            # subscribe the user to the trial workflow if not already
+            MailchimpAPI.subscribe_user(\
+                         get_config('mailchimp_trial_started_id'), entry)
+        else:
+            # just update the last contact time
+            entry.contact_time = datetime.utcnow()
+            session.commit()
 
         # update the opportunity
         SalesforceAPI.update_opportunity(entry)
@@ -265,7 +280,7 @@ class TrialStartApplication(GenericWSGIApplication):
               .format(key, entry.expiration_time))
 
         return {'trial': True,
-                'stage': entry.stage,
+                'stage': Stage.get_by_id(entry.stageid).name,
                 'expiration-time': str(entry.expiration_time)}
 
 class BuyRequestApplication(GenericWSGIApplication):
@@ -338,7 +353,7 @@ class BuyRequestApplication(GenericWSGIApplication):
         entry.expiration_time = \
               time_from_today(months=get_config_int('buy_expiration_months'))
         entry.license_start_time = datetime.utcnow()
-        entry.stage = get_config('sf_stage_closed_won')
+        entry.stageid = Stage.get_by_key('stage_closed_won').id
         session = get_session()
         session.commit()
 
