@@ -111,8 +111,8 @@ class SalesforceAPI():
                               'Palette_License_Key__c': data.key, \
                               'Palette_Server_Time_Zone__c': data.timezone \
                               })
-        logger.info('Creating new opportunityContact \
-                     Name {0} {1} Account Id {1}'.\
+        logger.info('Creating new opportunity with Contact '\
+                    'Name {0} {1} Account Id {1}'.\
                      format(data.firstname, data.lastname, accountid))
 
     @classmethod

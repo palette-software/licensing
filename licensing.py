@@ -113,10 +113,9 @@ class License(Base):
             row.expiration_time = expiration
         session.commit()
 
-    def set_fields(self, source, names, fields):
-        for name in names:
-            i = names.index(name)
+    def set_values(self, source, dest, fields):
+        for name, dest_attr in fields.items():
             value = source.get(name)
             if value is not None:
-                setattr(self, fields[i], value)
+                setattr(self, dest_attr, value)
 

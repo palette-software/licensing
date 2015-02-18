@@ -38,7 +38,7 @@ TRIAL_EXPIRED = 'http://www.palette-software.com/trial-expired'
 BUY = 'http://www.palette-software.com/buy'
 
 def time_from_today(hours=0, days=0, months=0):
-    return datetime.today() + \
+    return datetime.utcnow() + \
            relativedelta(hours=hours, days=days, months=months)
 
 def check_fields(params, names):
@@ -114,6 +114,8 @@ class HelloApplication(GenericWSGIApplication):
         return str(datetime.now())
 
 class TrialRequestApplication(GenericWSGIApplication):
+    @required_parameters('Field1', 'Field2', 'Field3', 'Field6', 'Field115', \
+                         'Field8', 'Field9')
     def service_POST(self, req):
         """ Handler for Try Palette Form Post
         """
@@ -122,20 +124,17 @@ class TrialRequestApplication(GenericWSGIApplication):
         fullname = fn + " " + ln
         email = req.params['Field3']
         org = req.params['Field6']
-        website = req.params['Field115']
-        hosting_type = req.params['Field8']
-        subdomain = req.params['Field9']
 
         logger.info('New trial request for {0} {1} {2}'\
               .format(org, fullname, email))
 
         # fixme add exception handling
         entry = License()
-        names = ['Field1', 'Field2', 'Field3', 'Field6', \
-                 'Field115', 'Field8', 'Field9']
-        fields = ['firstname', 'lastname', 'email', 'organization', \
-                  'website', 'hosting_type', 'subdomain']
-        entry.set_fields(req.params, names, fields)
+        fields = {'Field1':'firstname', 'Field2':'lastname', 'Field3':'email', \
+                 'Field6':'organization', 'Field115':'website', \
+                 'Field8':'hosting_type', 'Field9':'subdomain'}
+        entry.set_values(req.params, entry, fields)
+
         entry.key = str(uuid.uuid4())
         entry.expiration_time = \
             time_from_today(days=get_config_int('trial_req_expiration_days'))
@@ -284,16 +283,19 @@ class BuyRequestApplication(GenericWSGIApplication):
 
         logger.info('Returning buy request info for {0}'.format(key))
 
-        fields = [7, 3, 4, 5, 6, 21, 9]
-        fieldnames = ['field{0}'.format(i) for i in fields]
-        values = [entry.key, entry.firstname, entry.lastname, entry.email, \
-                  entry.organization, entry.phone, entry.n]
-        parameters = dict(zip(fieldnames, values))
-
-        url_items = [kvp(k, v) for k, v in parameters.iteritems()]
+        fields = {'field7':entry.key, 'field3':entry.firstname, \
+                  'field4':entry.lastname, 'field5':entry.email, \
+                  'field6':entry.organization, 'field21':entry.phone, \
+                  'field9':entry.n}
+        url_items = [kvp(k, v) for k, v in fields.iteritems()]
         url = '&'.join(url_items)
         location = '{0}/{1}'.format(get_config('buy_url'), url)
         raise exc.HTTPTemporaryRedirect(location=location)
+
+    @required_parameters('Field3', 'Field4', 'Field6', 'Field5', 'Field21',
+                         'Field22', 'Field8', 'Field9', \
+                         'Field13', 'Field14', 'Field15', 'Field16', 'Field17',\
+                         'Field18', 'Field225')
 
     def service_POST(self, req):
         """ Handle a Buy Request
@@ -308,27 +310,30 @@ class BuyRequestApplication(GenericWSGIApplication):
 
         logger.info('Buy request for {0}'.format(key))
 
-        names = ['Field3', 'Field4', 'Field6', 'Field5', 'Field21', \
-                 'Field22', 'Field8', 'Field9', \
-                 'Field13', 'Field14', 'Field15', 'Field16', 'Field17', \
-                 'Field18']
-        fields = ['firstname', 'lastname', 'organization', 'email', 'phone', \
-                  'palette_type', 'license_type', 'license_cap', \
-                  'billing_address_line1', 'billing_address_line2', \
-                  'billing_city', 'billing_state', 'billing_zip', \
-                  'billing_country']
-        check_fields(req.params, names)
-        entry.set_fields(req.params, names, fields)
+        fields = {'Field3':'firstname', \
+                  'Field4':'lastname', \
+                  'Field6':'organization', \
+                  'Field5':'email', \
+                  'Field21':'phone', \
+                  'Field22':'palette_type', \
+                  'Field8':'license_type', \
+                  'Field9':'license_cap', \
+                  'field13':'billing_address_line1', \
+                  'Field14':'billing_address_line2', \
+                  'Field15':'billing_city', \
+                  'Field16':'billing_state', \
+                  'Field17':'billing_zip', \
+                  'Field18':'billing_country'}
+        entry.set_values(req.params, entry, fields)
 
-        alt_billing = req.params['Field225']
-        if alt_billing == ' ':
+        if req.params['Field225']  == 'Yes! Let me tell you more!':
             entry.alt_billing = True
-            names = ['Field11', 'Field12', 'Field20', 'Field19', 'Field13', \
-                     'Field14', 'Field15', 'Field16', 'Field17', 'Field18']
-            fields = ['billing_fn', 'billing_ln', 'billing_email', \
-                      'billing_phone']
+            fields = {'Field11':'billing_fn', \
+                      'Field12':'billing_ln', \
+                      'Field20':'billing_email', \
+                      'Field19':'billing_phone'}
             check_fields(req.params, names)
-            entry.set_fields(req.params, names, fields)
+            entry.set_values(req.params, entry, fields)
 
         entry.expiration_time = \
               time_from_today(months=get_config_int('buy_expiration_months'))
