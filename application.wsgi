@@ -92,7 +92,7 @@ router.add_route(r'/trial-expired\Z', ExpiredApplication(TRIAL_EXPIRED))
 router.add_route(r'/license-expired\Z', ExpiredApplication(LICENSE_EXPIRED))
 router.add_route(r'/buy\Z', ExpiredApplication(BUY))
 
-application = SessionMiddleware(database, app=router)
+application = SessionMiddleware(router)
 
 if __name__ == '__main__':
     from akiri.framework.server import runserver
