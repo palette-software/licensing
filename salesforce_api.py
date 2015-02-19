@@ -1,13 +1,10 @@
 from datetime import datetime
-from simple_salesforce import Salesforce
 import logging
+import config
 
-from config import get_config
 from stage import Stage
 
-sf = Salesforce(username=get_config('salesforce_username'),
-                password=get_config('salesforce_password'),
-                security_token=get_config('salesforce_token'))
+from simple_salesforce import Salesforce
 
 logger = logging.getLogger('licensing')
 
@@ -15,11 +12,16 @@ class SalesforceAPI():
     """ Class that uses the salesforce python module to create
         Contcts, Accounts and Opportunities
     """
-    @classmethod
-    def lookup_account(cls, data):
+    def __init__(self, username, password, security_token):
+        """ Initialize the salesforce object
+        """
+        self.sf = Salesforce(username=username, password=password, \
+                             security_token=security_token)
+
+    def lookup_account(self, data):
         """ Lookup an account and return the id
         """
-        account = sf.query("""SELECT Name, id
+        account = self.sf.query("""SELECT Name, id
                   FROM Account where Name='{0}'""".format(data.organization))
         if account is None or account['totalSize'] == 0:
             accountid = None
@@ -27,13 +29,12 @@ class SalesforceAPI():
             accountid = account['records'][0]['Id']
         return accountid
 
-    @classmethod
-    def lookup_or_create_account(cls, data):
+    def lookup_or_create_account(self, data):
         """ Lookup or create an account using the supplied data
         """
-        accountid = cls.lookup_account(data)
+        accountid = self.lookup_account(data)
         if accountid is None:
-            account = sf.Account.create({'Name':data.organization, \
+            account = self.sf.Account.create({'Name':data.organization, \
                                          'Phone':data.phone})
             accountid = account['id']
             logger.info('Creating Account Name {0} Id {1}'\
@@ -41,23 +42,21 @@ class SalesforceAPI():
 
         return accountid
 
-    @classmethod
-    def update_account(cls, data):
+    def update_account(self, data):
         """ Update an account
         """
-        accountid = cls.lookup_account(data)
+        accountid = self.lookup_account(data)
         if accountid is None:
-            sf.Account.update(accountid, 
+            self.sf.Account.update(accountid, 
                  {'Name':data.organization, \
                   'Phone':data.phone})
             logger.info('Updating Account Name {0} Id {1}'\
                         .format(data.organization, accountid))
 
-    @classmethod
-    def lookup_contact(cls, data):
+    def lookup_contact(self, data):
         """ Lookup a contact
         """
-        contact = sf.query("""SELECT Name, id
+        contact = self.sf.query("""SELECT Name, id
                   FROM Contact where Firstname='{0}' and Lastname='{1}'"""\
                   .format(data.firstname, data.lastname))
         if contact is None or contact['totalSize'] == 0:
@@ -66,13 +65,12 @@ class SalesforceAPI():
             contactid = contact['records'][0]['Id']
         return contactid
 
-    @classmethod
-    def lookup_or_create_contact(cls, data):
+    def lookup_or_create_contact(self, data):
         """ Lookup or create contact
         """
-        contactid = cls.lookup_contact(data)
+        contactid = self.lookup_contact(data)
         if contactid is None:
-            contact = sf.Contact.create({'Firstname':data.firstname, \
+            contact = self.Contact.create({'Firstname':data.firstname, \
                                          'Lastname':data.lastname, \
                                          'Email':data.email, \
                                          'Phone':data.phone})
@@ -82,31 +80,29 @@ class SalesforceAPI():
 
         return contactid
 
-    @classmethod
-    def update_contact(cls, data):
+    def update_contact(self, data):
         """ Update Contact
         """
-        contactid = cls.lookup_contact(data)
+        contactid = self.lookup_contact(data)
         if contactid is not None:
-            sf.Contact.Update(contactid, {'Firstname':data.firstname, \
+            self.sf.Contact.Update(contactid, {'Firstname':data.firstname, \
                                          'Lastname':data.lastname, \
                                          'Email':data.email, \
                                          'Phone':data.phone})
             logger.info('Updating Contact Name {0} {1} Id {1}'.\
                        format(data.firstname, data.lastname, contactid))
 
-    @classmethod
-    def new_opportunity(cls, data):
+    def new_opportunity(self, data):
         """ Create a new Salesforce Opportunity
         """
-        contactid = cls.lookup_or_create_contact(data)
-        accountid = cls.lookup_or_create_account(data)
+        contactid = self.lookup_or_create_contact(data)
+        accountid = self.lookup_or_create_account(data)
 
         name = data.organization + ' ' + \
                data.firstname + ' ' + data.lastname + ' ' +\
                datetime.utcnow().isoformat()
 
-        sf.Opportunity.create({'Name':name, 'AccountId':accountid, \
+        self.sf.Opportunity.create({'Name':name, 'AccountId':accountid, \
                               'StageName': Stage.get_by_id(data.stageid).name, \
                               'CloseDate': data.expiration_time.isoformat(), \
                               'Palette_License_Key__c': data.key, \
@@ -116,11 +112,10 @@ class SalesforceAPI():
                     'Name {0} {1} Account Id {1}'.\
                      format(data.firstname, data.lastname, accountid))
 
-    @classmethod
-    def update_opportunity(cls, data):
+    def update_opportunity(self, data):
         """ Update a Salesforce Opportunity
         """
-        opp = sf.query("""SELECT Name, id FROM Opportunity
+        opp = self.sf.query("""SELECT Name, id FROM Opportunity
                           where Palette_License_Key__c='{0}'""".\
                           format(data.key))
         if opp is not None and opp['totalSize'] == 1:
@@ -128,7 +123,7 @@ class SalesforceAPI():
                      .format(data.key, Stage.get_by_id(data.stageid).name))
 
             oppid = opp['records'][0]['Id']
-            sf.Opportunity.update(oppid, 
+            self.sf.Opportunity.update(oppid,
                  {'StageName':Stage.get_by_id(data.stageid).name, \
                   'CloseDate':data.expiration_time.isoformat() \
                  })

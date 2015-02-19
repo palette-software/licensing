@@ -3,10 +3,8 @@ from __future__ import absolute_import
 from datetime import datetime
 from akiri.framework.sqlalchemy import Base, get_session
 
-from sqlalchemy import Column, String, BigInteger, Integer, Boolean, \
-                       DateTime, func
-from sqlalchemy.schema import ForeignKey, UniqueConstraint
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, func
+from sqlalchemy.schema import ForeignKey
 from sqlalchemy.orm.exc import NoResultFound
 
 class License(Base):
@@ -99,11 +97,11 @@ class License(Base):
             return None
 
     @classmethod
-    def get_expired_licenses(cls, stage):
+    def get_expired_licenses(cls, stageid):
         session = get_session()
         now = datetime.utcnow()
         try:
-            rows = session.query(License).filter(License.stage == stage) \
+            rows = session.query(License).filter(License.stageid == stageid) \
                                          .filter(License.expiration_time < now)
         except NoResultFound:
             return None

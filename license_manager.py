@@ -7,8 +7,8 @@ from licensing import License
 from salesforce_api import SalesforceAPI
 from mailchimp_api import MailchimpAPI
 
-from config import get_config, get_config_float
 import logging
+import config
 
 # Setup logging
 logger = logging.getLogger('license manager')
@@ -73,7 +73,7 @@ class LicenseManager():
 
 if __name__ == '__main__':
     # pylint: disable=invalid-name
-    create_engine(get_config('db_url'), \
+    create_engine(config.db_url, \
                   echo=False, pool_size=20, max_overflow=50)
     manager = LicenseManager()
     manager.Start()

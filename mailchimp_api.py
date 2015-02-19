@@ -1,7 +1,9 @@
 import logging
-from mailchimp import Mailchimp, ListAlreadySubscribedError
+import config
 
-from config import get_config, get_config_bool
+from system import System
+from util import str2bool
+from mailchimp import Mailchimp, ListAlreadySubscribedError
 
 logger = logging.getLogger('licensing')
 
@@ -13,8 +15,8 @@ class MailchimpAPI():
     def subscribe_user(cls, mailid, data):
         """ Subscribe a user to a given mailchimp list
         """
-        chimp = Mailchimp(get_config('mailchimp_apikey'), \
-                          debug=get_config_bool('mailchimp_debug'))
+        chimp = Mailchimp(System.get_by_key('mailchimp_apikey'), \
+                          debug=str2bool(System.get_by_key('mailchimp_debug')))
         email = {'email': data.email}
         merge_vars = {'FNAME':data.firstname, 'LNAME':data.lastname, \
                       'LICENSE': data.key}

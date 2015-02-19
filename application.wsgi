@@ -16,22 +16,12 @@ from akiri.framework.util import required_parameters
 
 from stage import Stage
 from licensing import License
+from system import System
 from support import Support
 from mailchimp_api import MailchimpAPI
 from salesforce_api import SalesforceAPI
 
-from config import get_config, get_config_int
-
-# Setup logging
-logger = logging.getLogger('licensing')
-logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-formatter = logging.Formatter(\
-                    '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-logger.addHandler(ch)
-
+import config
 
 # FIXME: https
 LICENSE_EXPIRED = 'http://www.palette-software.com/license-expired'
@@ -137,8 +127,8 @@ class TrialRequestApplication(GenericWSGIApplication):
 
         entry.name = org
         entry.key = str(uuid.uuid4())
-        entry.expiration_time = \
-            time_from_today(days=get_config_int('trial_req_expiration_days'))
+        entry.expiration_time = time_from_today(\
+            days=int(System.get_by_key('trial_req_expiration_days')))
         entry.stageid = Stage.get_by_key('stage_trial_requested').id
 
         session = get_session()
@@ -146,10 +136,10 @@ class TrialRequestApplication(GenericWSGIApplication):
         session.commit()
 
         # create or use an existing opportunity
-        SalesforceAPI.new_opportunity(entry)
+        salesforce.new_opportunity(entry)
         # subscribe the user to the trial workflow if not already
         MailchimpAPI.subscribe_user(\
-             get_config('mailchimp_trial_requested_id'), entry)
+             System.get_by_key('mailchimp_trial_requested_id'), entry)
 
         logger.info('Trial request success for {0} {1}'\
                     .format(entry.email, entry.key))
@@ -193,18 +183,18 @@ class TrialRegisterApplication(GenericWSGIApplication):
         entry.n = license_quantity
 
         entry.stageid = Stage.get_by_key('stage_trial_registered').id
-        entry.expiration_time = \
-              time_from_today(days=get_config_int('trial_req_expiration_days'))
+        entry.expiration_time = time_from_today(\
+             days=int(System.get_by_key('trial_req_expiration_days')))
         entry.registration_start_time = datetime.utcnow()
         entry.contact_time = datetime.utcnow()
         session = get_session()
         session.commit()
 
         # update the opportunity
-        SalesforceAPI.update_opportunity(entry)
+        salesforce.update_opportunity(entry)
         # subscribe the user to the trial workflow if not already
         MailchimpAPI.subscribe_user(\
-                     get_config('mailchimp_trial_registered_id'), entry)
+              System.get_by_key('mailchimp_trial_registered_id'), entry)
 
         logger.info('Trial Registration for key {0} success. Expiration {1}'\
               .format(key, entry.expiration_time))
@@ -255,26 +245,26 @@ class TrialStartApplication(GenericWSGIApplication):
         if entry.stageid != Stage.get_by_key('stage_trial_started').id:
             # if this is the trial hasnt started yet start it
             entry.stageid = Stage.get_by_key('stage_trial_started').id
-            entry.expiration_time = \
-                time_from_today(days=get_config_int('trial_reg_expiration_days'))
+            entry.expiration_time = time_from_today(\
+                days=int(System.get_by_key('trial_reg_expiration_days')))
             entry.trial_start_time = datetime.utcnow()
             session.commit()
 
             # update the opportunity
-            SalesforceAPI.update_opportunity(entry)
+            salesforce.update_opportunity(entry)
             # subscribe the user to the trial workflow if not already
             MailchimpAPI.subscribe_user(\
-                         get_config('mailchimp_trial_started_id'), entry)
+                 System.get_by_key('mailchimp_trial_started_id'), entry)
         else:
             # just update the last contact time
             entry.contact_time = datetime.utcnow()
             session.commit()
 
         # update the opportunity
-        SalesforceAPI.update_opportunity(entry)
+        salesforce.update_opportunity(entry)
         # subscribe the user to the trial workflow if not already
-        MailchimpAPI.subscribe_user(get_config('mailchimp_trial_started_id'), \
-                                    entry)
+        MailchimpAPI.subscribe_user(\
+            System.get_by_key('mailchimp_trial_started_id'), entry)
 
         logger.info('Trial Start for key {0} success. Expiration {1}'\
               .format(key, entry.expiration_time))
@@ -304,7 +294,7 @@ class BuyRequestApplication(GenericWSGIApplication):
                   'field9':entry.n}
         url_items = [kvp(k, v) for k, v in fields.iteritems()]
         url = '&'.join(url_items)
-        location = '{0}/{1}'.format(get_config('buy_url'), url)
+        location = '{0}/{1}'.format(System.get_by_key('buy_url'), url)
         raise exc.HTTPTemporaryRedirect(location=location)
 
     @required_parameters('Field3', 'Field4', 'Field6', 'Field5', 'Field21',
@@ -341,32 +331,46 @@ class BuyRequestApplication(GenericWSGIApplication):
                   'Field18':'billing_country'}
         entry.set_values(req.params, entry, fields)
 
-        if req.params['Field225']  == 'Yes! Let me tell you more!':
+        if req.params['Field225'] == 'Yes! Let me tell you more!':
             entry.alt_billing = True
             fields = {'Field11':'billing_fn', \
                       'Field12':'billing_ln', \
                       'Field20':'billing_email', \
                       'Field19':'billing_phone'}
-            check_fields(req.params, names)
+            check_fields(req.params, fields.keys())
             entry.set_values(req.params, entry, fields)
 
-        entry.expiration_time = \
-              time_from_today(months=get_config_int('buy_expiration_months'))
+        entry.expiration_time = time_from_today(\
+            months=int(System.get_by_key('buy_expiration_months')))
         entry.license_start_time = datetime.utcnow()
         entry.stageid = Stage.get_by_key('stage_closed_won').id
         session = get_session()
         session.commit()
 
         # update the opportunity
-        SalesforceAPI.update_opportunity(entry)
+        salesforce.update_opportunity(entry)
         # subscribe the user to the trial workflow if not already
-        MailchimpAPI.subscribe_user(get_config('mailchimp_closed_won_id'), \
-                                    entry)
+        MailchimpAPI.subscribe_user(\
+            System.get_by_key('mailchimp_closed_won_id'), entry)
 
         logger.info('Buy request success for {0}'.format(key))
 
 # pylint: disable=invalid-name
-create_engine(get_config('db_url'), echo=False, pool_size=20, max_overflow=50)
+create_engine(config.db_url, echo=False, pool_size=20, max_overflow=50)
+
+# Setup logging
+logger = logging.getLogger('licensing')
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+formatter = logging.Formatter(\
+                    '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
+salesforce = SalesforceAPI(System.get_by_key('salesforce_username'), \
+                           System.get_by_key('salesforce_password'), \
+                           System.get_by_key('salesforce_token'))
 
 router = Router()
 router.add_route(r'/hello\Z', HelloApplication())
@@ -381,7 +385,7 @@ router.add_route(r'/api/licensing/trial_register\Z', TrialRegisterApplication())
 router.add_route(r'/api/licensing/trial_start\Z', TrialStartApplication())
 router.add_route(r'/api/licensing/buy_request', BuyRequestApplication())
 
-application = SessionMiddleware(get_config('db_url'), app=router)
+application = SessionMiddleware(app=router)
 
 if __name__ == '__main__':
     from akiri.framework.server import runserver
