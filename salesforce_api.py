@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 import logging
 import config
 
@@ -100,7 +100,7 @@ class SalesforceAPI():
 
         name = data.organization + ' ' + \
                data.firstname + ' ' + data.lastname + ' ' +\
-               datetime.utcnow().isoformat()
+               datetime.utcnow().strftime('%x %X')
 
         self.sf.Opportunity.create({'Name':name, 'AccountId':accountid, \
                               'StageName': Stage.get_by_id(data.stageid).name, \

@@ -40,35 +40,6 @@ def kvp(k, v):
     else:
         return str(k) + '='
 
-class LicensingApplication(GenericWSGIApplication):
-
-    @required_parameters('system-id', 'license-key', \
-                         'license-type', 'license-quantity')
-    def service_POST(self, req):
-        key = req.params['license-key']
-        entry = License.get_by_key(key)
-        if entry is None:
-            raise exc.HTTPNotFound()
-        system_id = req.params['system-id']
-        if entry.system_id and entry.system_id != system_id:
-            # FIXME: notify
-            pass
-        entry.system_id = system_id
-        license_type = req.params['license-type']
-        if entry.type and entry.type != license_type:
-            # FIXME: notify
-            pass
-        entry.type = license_type
-        license_quantity = req.params['license-quantity']
-        if entry.n and entry.n != license_quantity:
-            # FIXME: notify
-            pass
-        entry.n = license_quantity
-        session = get_session()
-        session.commit()
-        return {'trial': entry.trial,
-                'expiration-time': str(entry.expiration_time)}
-
 class SupportApplication(GenericWSGIApplication):
 
     def service_GET(self, req):
@@ -397,7 +368,7 @@ salesforce = SalesforceAPI(System.get_by_key('salesforce_username'), \
 
 router = Router()
 router.add_route(r'/hello\Z', HelloApplication())
-router.add_route(r'/license\Z', LicensingApplication())
+router.add_route(r'/license\Z', TrialStartApplication())
 router.add_route(r'/support\Z', SupportApplication())
 router.add_route(r'/trial-expired\Z', ExpiredApplication(TRIAL_EXPIRED))
 router.add_route(r'/license-expired\Z', ExpiredApplication(LICENSE_EXPIRED))
