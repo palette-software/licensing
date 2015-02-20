@@ -6,6 +6,8 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from webob import exc
 import uuid
+import urllib
+from decimal import Decimal
 import logging
 
 from akiri.framework import GenericWSGIApplication
@@ -32,15 +34,9 @@ def time_from_today(hours=0, days=0, months=0):
     return datetime.utcnow() + \
            relativedelta(hours=hours, days=days, months=months)
 
-def check_fields(params, names):
-    for i in names:
-        if not i in params:
-            logger.error('Parameter {0} not specified'.format(i))
-            raise exc.HTTPNotFound()
-
 def kvp(k, v):
     if v is not None:
-        return str(k) + '=' + str(v)
+        return str(k) + '=' + urllib.quote(str(v))
     else:
         return str(k) + '='
 
@@ -105,6 +101,12 @@ class HelloApplication(GenericWSGIApplication):
         return str(datetime.now())
 
 class TrialRequestApplication(GenericWSGIApplication):
+    TRIAL_FIELDS = {'Field1':'firstname', 'Field2':'lastname', \
+                    'Field3':'email', \
+                    'Field6':'organization', 'Field115':'website', \
+                    'Field8':'hosting_type', 'Field9':'subdomain', \
+                    'Field120':'admin_role'}
+
     @required_parameters('Field1', 'Field2', 'Field3', 'Field6', 'Field115', \
                          'Field8', 'Field9')
     def service_POST(self, req):
@@ -120,11 +122,8 @@ class TrialRequestApplication(GenericWSGIApplication):
               .format(org, fullname, email))
 
         entry = License()
-        fields = {'Field1':'firstname', 'Field2':'lastname', 'Field3':'email', \
-                 'Field6':'organization', 'Field115':'website', \
-                 'Field8':'hosting_type', 'Field9':'subdomain'}
-        entry.set_values(req.params, entry, fields)
-
+        entry.set_values(req.params, entry, \
+           TrialRequestApplication.TRIAL_FIELDS)
         entry.name = org
         entry.key = str(uuid.uuid4())
         entry.expiration_time = time_from_today(\
@@ -274,48 +273,12 @@ class TrialStartApplication(GenericWSGIApplication):
                 'expiration-time': str(entry.expiration_time)}
 
 class BuyRequestApplication(GenericWSGIApplication):
-    def service_GET(self, req):
-        """ Handle get request which looks up the key and redirects to a
-            URL to buy with the info pre-populated on the form
-        """
-        key = req.params_get('key')
-        entry = License.get_by_key(key)
-        if entry is None:
-            raise exc.HTTPNotFound()
+    """ Class that Handles get/post methods for the palette buy url
+    """
 
-        #if entry.stage is not config.SF_STAGE_TRIAL_STARTED:
-        #    raise exc.HTTPTemporaryRedirect(location=config.BAD_STAGE_URL)
-
-        logger.info('Returning buy request info for {0}'.format(key))
-
-        fields = {'field7':entry.key, 'field3':entry.firstname, \
-                  'field4':entry.lastname, 'field5':entry.email, \
-                  'field6':entry.organization, 'field21':entry.phone, \
-                  'field9':entry.n}
-        url_items = [kvp(k, v) for k, v in fields.iteritems()]
-        url = '&'.join(url_items)
-        location = '{0}/{1}'.format(System.get_by_key('buy_url'), url)
-        raise exc.HTTPTemporaryRedirect(location=location)
-
-    @required_parameters('Field3', 'Field4', 'Field6', 'Field5', 'Field21',
-                         'Field22', 'Field8', 'Field9', \
-                         'Field13', 'Field14', 'Field15', 'Field16', 'Field17',\
-                         'Field18', 'Field225')
-
-    def service_POST(self, req):
-        """ Handle a Buy Request
-        """
-        key = req.params['Field7']
-        entry = License.get_by_key(key)
-        if entry is None:
-            raise exc.HTTPNotFound()
-
-        #if entry.stage is not config.SF_STAGE_TRIAL_STARTED:
-        #    raise exc.HTTPTemporaryRedirect(location=config.BAD_STAGE_URL)
-
-        logger.info('Buy request for {0}'.format(key))
-
-        fields = {'Field3':'firstname', \
+    # field mapping between request parameters and entity parameters
+    # on the buy form
+    BUY_FIELDS = {'Field3':'firstname', \
                   'Field4':'lastname', \
                   'Field6':'organization', \
                   'Field5':'email', \
@@ -329,16 +292,76 @@ class BuyRequestApplication(GenericWSGIApplication):
                   'Field16':'billing_state', \
                   'Field17':'billing_zip', \
                   'Field18':'billing_country'}
-        entry.set_values(req.params, entry, fields)
 
-        if req.params['Field225'] == 'Yes! Let me tell you more!':
-            entry.alt_billing = True
-            fields = {'Field11':'billing_fn', \
+    # additional mapping when alt_billing is set
+    ALT_BILLING_FIELDS = {'Field11':'billing_fn', \
                       'Field12':'billing_ln', \
                       'Field20':'billing_email', \
                       'Field19':'billing_phone'}
-            check_fields(req.params, fields.keys())
-            entry.set_values(req.params, entry, fields)
+
+    NAMED_USER_TYPE = 'Named-user'
+    CORE_USER_TYPE = 'Core'
+
+    def calculate_price(self, count, type):
+        val = 0
+        if type == BuyRequestApplication.NAMED_USER_TYPE:
+            val = int(System.get_by_key('user_price')) * count
+        elif type == BuyRequestApplication.CORE_USER_TYPE:
+            val = int(System.get_by_key('core_price')) * count
+        return Decimal(val)
+
+    def service_GET(self, req):
+        """ Handle get request which looks up the key and redirects to a
+            URL to buy with the info pre-populated on the form
+        """
+        key = req.params_get('key')
+        entry = License.get_by_key(key)
+        if entry is None:
+            logger.error('Buy request get count not find {0}'.format(key))
+            raise exc.HTTPNotFound()
+
+        #if entry.stage is not config.SF_STAGE_TRIAL_STARTED:
+        #    raise exc.HTTPTemporaryRedirect(location=config.BAD_STAGE_URL)
+
+        logger.info('Processing Buy get request info for {0}'.format(key))
+
+        amount = self.calculate_price(entry.n, entry.type)
+        print amount
+
+        fields = {'field7':entry.key, 'field3':entry.firstname, \
+                  'field4':entry.lastname, 'field5':entry.email, \
+                  'field6':entry.organization, 'field21':entry.phone, \
+                  'field9':entry.n, 'field23':amount}
+        url_items = [kvp(k, v) for k, v in fields.iteritems()]
+        url = '&'.join(url_items)
+        location = '{0}/{1}'.format(System.get_by_key('buy_url'), url)
+        raise exc.HTTPTemporaryRedirect(location=location)
+
+    @required_parameters('Field3', 'Field4', 'Field6', 'Field5', 'Field21',
+                         'Field22', 'Field8', 'Field9', \
+                         'Field13', 'Field14', 'Field15', 'Field16', \
+                         'Field17', 'Field18', 'Field225', \
+                         'Field11', 'Field12','Field20', 'Field19', \
+                         'Field7')
+    def service_POST(self, req):
+        """ Handle a Buy Request
+        """
+        key = req.params['Field7']
+        entry = License.get_by_key(key)
+        if entry is None:
+            logger.error('Buy request post could not find {0}'.format(key))
+            raise exc.HTTPNotFound()
+
+        #if entry.stage is not config.SF_STAGE_TRIAL_STARTED:
+        #    raise exc.HTTPTemporaryRedirect(location=config.BAD_STAGE_URL)
+
+        logger.info('Processing Buy Post request for {0}'.format(key))
+
+        entry.set_values(req.params, entry, BuyRequestApplication.BUY_FIELDS)
+
+        if req.params['Field225'] == 'Yes! Let me tell you more!':
+            entry.alt_billing = True
+            entry.set_values(req.params, entry, ALT_BILLING_FIELDS)
 
         entry.expiration_time = time_from_today(\
             months=int(System.get_by_key('buy_expiration_months')))
@@ -380,10 +403,10 @@ router.add_route(r'/trial-expired\Z', ExpiredApplication(TRIAL_EXPIRED))
 router.add_route(r'/license-expired\Z', ExpiredApplication(LICENSE_EXPIRED))
 router.add_route(r'/buy\Z', ExpiredApplication(BUY))
 
-router.add_route(r'/api/licensing/trial_request\Z', TrialRequestApplication())
-router.add_route(r'/api/licensing/trial_register\Z', TrialRegisterApplication())
-router.add_route(r'/api/licensing/trial_start\Z', TrialStartApplication())
-router.add_route(r'/api/licensing/buy_request', BuyRequestApplication())
+router.add_route(r'/api/trial_request\Z', TrialRequestApplication())
+router.add_route(r'/api/trial_register\Z', TrialRegisterApplication())
+router.add_route(r'/api/trial_start\Z', TrialStartApplication())
+router.add_route(r'/api/buy_request', BuyRequestApplication())
 
 application = SessionMiddleware(app=router)
 

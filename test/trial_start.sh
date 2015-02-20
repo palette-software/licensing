@@ -1,5 +1,5 @@
 SERVER=http://localhost:8080
-URL=$SERVER/api/licensing/trial_start
+URL=$SERVER/api/trial_start
 KEY=$1
 
 # Test with good license key

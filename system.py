@@ -58,6 +58,10 @@ class System(Base, BaseMixin):
                  {'key':'bad_stage_url',
                   'value':'http://palette-software.com/'},
                  {'key':'license_check_interval',
+                  'value':'60'},
+                 {'key':'core_price',
+                  'value':'2000'},
+                 {'key':'user_price',
                   'value':'60'}]
 
     @classmethod

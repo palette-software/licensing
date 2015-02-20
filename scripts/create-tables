@@ -6,17 +6,27 @@ sys.path.append('/opt/palette')
 import sqlalchemy
 from akiri.framework.sqlalchemy import Base
 
+# pylint: disable=import-error,no-name-in-module
+from akiri.framework.ext.sqlalchemy import meta
+# pylint: enable=import-error,no-name-in-module
+
 # These are need for create_all().
 # pylint: disable=unused-import
 from licensing import License
 from support import Support
+from stage import Stage
+from system import System
 # pylint: enable=unused-import
+import config
 
+DATABASE='postgresql://ldb:Tableau2014@localhost/ldb'
 def main():
     data = {'__name__': ''}
     execfile('application.wsgi', data)
-    engine = sqlalchemy.create_engine(data['database'], echo=False)
+    engine = sqlalchemy.create_engine(DATABASE, echo=False, pool_size=20, max_overflow=50)
     Base.metadata.create_all(engine)
+    Stage.populate()
+    System.populate()
 
 if __name__ == '__main__':
     main()

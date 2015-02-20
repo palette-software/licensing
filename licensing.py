@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from datetime import datetime
 from akiri.framework.sqlalchemy import Base, get_session
 
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, func
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, Numeric, func
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -23,7 +23,7 @@ class License(Base):
     name = Column(String)
 
     # The tableau license count
-    n = Column(String)
+    n = Column(Integer)
 
     # Autogenrated unique system GUID of the Palette Server
     system_id = Column(String)
@@ -53,10 +53,13 @@ class License(Base):
 
     # used for Palette Cloud
     subdomain = Column(String)
+
+    # customer info
     organization = Column(String)
     timezone = Column(String)
     website = Column(String, nullable=False)
     phone = Column(String)
+    admin_role = Column(String)
 
     # AWS, VMWare or Palette Cloud
     hosting_type = Column(String)
@@ -75,6 +78,8 @@ class License(Base):
     billing_state = Column(String)
     billing_zip = Column(String)
     billing_country = Column(String)
+
+    amount = Column(Numeric(8,2))
 
     creation_time = Column(DateTime, server_default=func.now())
     last_update = Column(DateTime, default=datetime.utcnow(),

@@ -70,7 +70,7 @@ class SalesforceAPI():
         """
         contactid = self.lookup_contact(data)
         if contactid is None:
-            contact = self.Contact.create({'Firstname':data.firstname, \
+            contact = self.sf.Contact.create({'Firstname':data.firstname, \
                                          'Lastname':data.lastname, \
                                          'Email':data.email, \
                                          'Phone':data.phone})
