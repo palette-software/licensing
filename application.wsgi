@@ -247,6 +247,7 @@ class TrialStartApplication(GenericWSGIApplication):
             entry.expiration_time = time_from_today(\
                 days=int(System.get_by_key('trial_reg_expiration_days')))
             entry.trial_start_time = datetime.utcnow()
+            entry.contact_time = datetime.utcnow()
             session.commit()
 
             # update the opportunity
@@ -326,12 +327,11 @@ class BuyRequestApplication(GenericWSGIApplication):
         logger.info('Processing Buy get request info for {0}'.format(key))
 
         amount = self.calculate_price(entry.n, entry.type)
-        print amount
 
         fields = {'field7':entry.key, 'field3':entry.firstname, \
                   'field4':entry.lastname, 'field5':entry.email, \
                   'field6':entry.organization, 'field21':entry.phone, \
-                  'field9':entry.n, 'field23':amount}
+                  'field9':entry.n, 'field330':amount}
         url_items = [kvp(k, v) for k, v in fields.iteritems()]
         url = '&'.join(url_items)
         location = '{0}/{1}'.format(System.get_by_key('buy_url'), url)
@@ -342,7 +342,7 @@ class BuyRequestApplication(GenericWSGIApplication):
                          'Field13', 'Field14', 'Field15', 'Field16', \
                          'Field17', 'Field18', 'Field225', \
                          'Field11', 'Field12','Field20', 'Field19', \
-                         'Field7')
+                         'Field7', 'Field330')
     def service_POST(self, req):
         """ Handle a Buy Request
         """
