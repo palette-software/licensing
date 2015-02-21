@@ -10,8 +10,11 @@ URL=$SERVER/api/trial_request
 # Hosting Type = Field 8
 # Subdomain = Field 9
 
+AWS='Your AWS Account with our AMI Image'
+VMWARE='Your Data Center with our VMware Image'
+
 # Test new user
-http -f POST $URL Field1='Vahid' Field2='Kowsari' Field3='vahid@kowsari.com' Field6='Test Inc.' Field115='test.com' Field8='Self Hosting' Field9=''
+http -f POST $URL Field1='Vahid' Field2='Kowsari' Field3='vahid@kowsari.com' Field6='Test Inc.' Field115='test.com' Field8="$VMWARE" Field9=''
 
 # Test with existing Organization
 

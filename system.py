@@ -62,7 +62,16 @@ class System(Base, BaseMixin):
                  {'key':'core_price',
                   'value':'2000'},
                  {'key':'user_price',
-                  'value':'60'}]
+                  'value':'60'},
+                 {'key':'sendwithus_apikey',
+                  'value':''},
+                 {'key':'sendwithus_trial_requested_id',
+                  'value':''},
+                 {'key':'sendwithus_trial_requested_vmware_id',
+                  'value':'dc_wjm4uWv63GAGx7RQSAEvLF'},
+                 {'key':'sendwithus_trial_requested_pcloud_id',
+                  'value':'dc_wjm4uWv63GAGx7RQSAEvLF'}
+                 ]
 
     @classmethod
     def get_by_key(cls, key):

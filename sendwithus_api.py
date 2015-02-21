@@ -1,15 +1,21 @@
 import sendwithus
 
-SENDWITHUS_APIKEY='test_123f4ca3dc10f6fda73355ea69270970dab784f2'
+import logging
+from system import System
 
-REQUESTED='dc_6bGAYqsYyehRD5VahXpoz3'
+logger = logging.getLogger('licensing')
 
 class SendwithusAPI():
     @classmethod
-    def subscribe_user(cls,  data):
-        api = sendwithus.api(api_key=SENDWITHUS_APIKEY)
-        api.start_on_drip_campaign(
-            REQUESTED,
+    def subscribe_user(cls,  mailid, data):
+        apikey = System.get_by_key('sendwithus_apikey')
+        print apikey,mailid
+        api = sendwithus.api(api_key=apikey)
+        r = api.start_on_drip_campaign(
+            mailid,
             {'address':data.email},
-            email_data={'license': 'blue'},
+            email_data={'license':data.key, 'firstname':data.firstname},
             sender={'address': 'hello@palette-software.com'})
+        if r.status_code != 200:
+            logger.error('Error subscribing user {0} to {1}'.format(\
+                   data.email, mailid))

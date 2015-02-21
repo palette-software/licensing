@@ -23,6 +23,7 @@ from support import Support
 from mailchimp_api import MailchimpAPI
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
+from slack_api import SlackAPI
 
 import config
 
@@ -79,6 +80,9 @@ class TrialRequestApplication(GenericWSGIApplication):
                     'Field8':'hosting_type', 'Field9':'subdomain', \
                     'Field120':'admin_role'}
 
+    AWS_HOSTING = 'Your AWS Account with our AMI Image'
+    VMWARE_HOSTING = 'Your Data Center with our VMware Image'
+
     @required_parameters('Field1', 'Field2', 'Field3', 'Field6', 'Field115', \
                          'Field8', 'Field9')
     def service_POST(self, req):
@@ -108,10 +112,19 @@ class TrialRequestApplication(GenericWSGIApplication):
 
         # create or use an existing opportunity
         SalesforceAPI.new_opportunity(entry)
-        SendwithusAPI.subscribe_user(entry)
-        # subscribe the user to the trial workflow if not already
-        MailchimpAPI.subscribe_user(\
-             System.get_by_key('mailchimp_trial_requested_id'), entry)
+        # subscribe the user to the trial list 
+        if entry.hosting_type == TrialRequestApplication.AWS_HOSTING:
+            mailid = System.get_by_key('sendwithus_trial_requested_id')
+        elif entry.hosting_type == TrialRequestApplication.VMWARE_HOSTING:
+            mailid = System.get_by_key('sendwithus_trial_requested_vmware_id')
+        else:
+            mailid = System.get_by_key('sendwithus_trial_requested_pcloud_id')
+        SendwithusAPI.subscribe_user(mailid, entry)
+
+        SlackAPI.notify('Trial request from: '
+                        '{0} ({1}) Org: {2} - Type: {3}'.format(\
+                        entry.firstname + ' ' + entry.lastname, entry.email, \
+                        entry.organization, entry.hosting_type))
 
         logger.info('Trial request success for {0} {1}'\
                     .format(entry.email, entry.key))
@@ -188,8 +201,6 @@ class TrialStartApplication(GenericWSGIApplication):
 
         #if entry.stage is not config.SF_STAGE_TRIAL_REGISTERED:
         #    raise exc.HTTPTemporaryRedirect(location=config.BAD_STAGE_URL)
-
-        logger.info('Processing Trial Start for key {0}'.format(key))
 
         system_id = req.params['system-id']
         if entry.system_id and entry.system_id != system_id:
