@@ -3,7 +3,7 @@ import logging
 import config
 
 from stage import Stage
-
+from system import System
 from simple_salesforce import Salesforce
 
 logger = logging.getLogger('licensing')
@@ -12,16 +12,15 @@ class SalesforceAPI():
     """ Class that uses the salesforce python module to create
         Contcts, Accounts and Opportunities
     """
-    def __init__(self, username, password, security_token):
-        """ Initialize the salesforce object
-        """
-        self.sf = Salesforce(username=username, password=password, \
-                             security_token=security_token)
-
-    def lookup_account(self, data):
+    @classmethod
+    def lookup_account(cls, data):
         """ Lookup an account and return the id
         """
-        account = self.sf.query("""SELECT Name, id
+        sf = Salesforce(username=System.get_by_key('salesforce_username'), \
+                        password=System.get_by_key('salesforce_password'), \
+                        security_token=System.get_by_key('salesforce_token'))
+
+        account = sf.query("""SELECT Name, id
                   FROM Account where Name='{0}'""".format(data.organization))
         if account is None or account['totalSize'] == 0:
             accountid = None
@@ -29,12 +28,16 @@ class SalesforceAPI():
             accountid = account['records'][0]['Id']
         return accountid
 
-    def lookup_or_create_account(self, data):
+    @classmethod
+    def lookup_or_create_account(cls, data):
         """ Lookup or create an account using the supplied data
         """
-        accountid = self.lookup_account(data)
+        accountid = cls.lookup_account(data)
         if accountid is None:
-            account = self.sf.Account.create({'Name':data.organization, \
+            sf = Salesforce(username=System.get_by_key('salesforce_username'), \
+                        password=System.get_by_key('salesforce_password'), \
+                        security_token=System.get_by_key('salesforce_token'))
+            account = sf.Account.create({'Name':data.organization, \
                                          'Phone':data.phone})
             accountid = account['id']
             logger.info('Creating Account Name {0} Id {1}'\
@@ -42,21 +45,29 @@ class SalesforceAPI():
 
         return accountid
 
-    def update_account(self, data):
+    @classmethod
+    def update_account(cls, data):
         """ Update an account
         """
-        accountid = self.lookup_account(data)
+        accountid = cls.lookup_account(data)
         if accountid is None:
-            self.sf.Account.update(accountid, 
+            sf = Salesforce(username=System.get_by_key('salesforce_username'), \
+                        password=System.get_by_key('salesforce_password'), \
+                        security_token=System.get_by_key('salesforce_token'))
+            sf.Account.update(accountid, 
                  {'Name':data.organization, \
                   'Phone':data.phone})
             logger.info('Updating Account Name {0} Id {1}'\
                         .format(data.organization, accountid))
 
-    def lookup_contact(self, data):
+    @classmethod
+    def lookup_contact(cls, data):
         """ Lookup a contact
         """
-        contact = self.sf.query("""SELECT Name, id
+        sf = Salesforce(username=System.get_by_key('salesforce_username'), \
+                        password=System.get_by_key('salesforce_password'), \
+                        security_token=System.get_by_key('salesforce_token'))
+        contact = sf.query("""SELECT Name, id
                   FROM Contact where Firstname='{0}' and Lastname='{1}'"""\
                   .format(data.firstname, data.lastname))
         if contact is None or contact['totalSize'] == 0:
@@ -65,12 +76,16 @@ class SalesforceAPI():
             contactid = contact['records'][0]['Id']
         return contactid
 
-    def lookup_or_create_contact(self, data):
+    @classmethod
+    def lookup_or_create_contact(cls, data):
         """ Lookup or create contact
         """
-        contactid = self.lookup_contact(data)
+        contactid = cls.lookup_contact(data)
         if contactid is None:
-            contact = self.sf.Contact.create({'Firstname':data.firstname, \
+            sf = Salesforce(username=System.get_by_key('salesforce_username'), \
+                        password=System.get_by_key('salesforce_password'), \
+                        security_token=System.get_by_key('salesforce_token'))
+            contact = sf.Contact.create({'Firstname':data.firstname, \
                                          'Lastname':data.lastname, \
                                          'Email':data.email, \
                                          'Phone':data.phone})
@@ -80,29 +95,37 @@ class SalesforceAPI():
 
         return contactid
 
-    def update_contact(self, data):
+    @classmethod
+    def update_contact(cls, data):
         """ Update Contact
         """
-        contactid = self.lookup_contact(data)
+        contactid = cls.lookup_contact(data)
         if contactid is not None:
-            self.sf.Contact.Update(contactid, {'Firstname':data.firstname, \
+            sf = Salesforce(username=System.get_by_key('salesforce_username'), \
+                        password=System.get_by_key('salesforce_password'), \
+                        security_token=System.get_by_key('salesforce_token'))
+            sf.Contact.Update(contactid, {'Firstname':data.firstname, \
                                          'Lastname':data.lastname, \
                                          'Email':data.email, \
                                          'Phone':data.phone})
             logger.info('Updating Contact Name {0} {1} Id {1}'.\
                        format(data.firstname, data.lastname, contactid))
 
-    def new_opportunity(self, data):
+    @classmethod
+    def new_opportunity(cls, data):
         """ Create a new Salesforce Opportunity
         """
-        contactid = self.lookup_or_create_contact(data)
-        accountid = self.lookup_or_create_account(data)
+        contactid = cls.lookup_or_create_contact(data)
+        accountid = cls.lookup_or_create_account(data)
 
         name = data.organization + ' ' + \
                data.firstname + ' ' + data.lastname + ' ' +\
                datetime.utcnow().strftime('%x %X')
 
-        self.sf.Opportunity.create({'Name':name, 'AccountId':accountid, \
+        sf = Salesforce(username=System.get_by_key('salesforce_username'), \
+                        password=System.get_by_key('salesforce_password'), \
+                        security_token=System.get_by_key('salesforce_token'))
+        sf.Opportunity.create({'Name':name, 'AccountId':accountid, \
                               'StageName': Stage.get_by_id(data.stageid).name, \
                               'CloseDate': data.expiration_time.isoformat(), \
                               'Palette_License_Key__c': data.key, \
@@ -112,10 +135,14 @@ class SalesforceAPI():
                     'Name {0} {1} Account Id {1}'.\
                      format(data.firstname, data.lastname, accountid))
 
-    def update_opportunity(self, data):
+    @classmethod
+    def update_opportunity(cls, data):
         """ Update a Salesforce Opportunity
         """
-        opp = self.sf.query("""SELECT Name, id FROM Opportunity
+        sf = Salesforce(username=System.get_by_key('salesforce_username'), \
+                        password=System.get_by_key('salesforce_password'), \
+                        security_token=System.get_by_key('salesforce_token'))
+        opp = sf.query("""SELECT Name, id FROM Opportunity
                           where Palette_License_Key__c='{0}'""".\
                           format(data.key))
         if opp is not None and opp['totalSize'] == 1:
@@ -123,7 +150,7 @@ class SalesforceAPI():
                      .format(data.key, Stage.get_by_id(data.stageid).name))
 
             oppid = opp['records'][0]['Id']
-            self.sf.Opportunity.update(oppid,
+            sf.Opportunity.update(oppid,
                  {'StageName':Stage.get_by_id(data.stageid).name, \
                   'CloseDate':data.expiration_time.isoformat() \
                  })

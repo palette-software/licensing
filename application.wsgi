@@ -22,6 +22,7 @@ from system import System
 from support import Support
 from mailchimp_api import MailchimpAPI
 from salesforce_api import SalesforceAPI
+from sendwithus_api import SendwithusAPI
 
 import config
 
@@ -106,7 +107,8 @@ class TrialRequestApplication(GenericWSGIApplication):
         session.commit()
 
         # create or use an existing opportunity
-        salesforce.new_opportunity(entry)
+        SalesforceAPI.new_opportunity(entry)
+        SendwithusAPI.subscribe_user(entry)
         # subscribe the user to the trial workflow if not already
         MailchimpAPI.subscribe_user(\
              System.get_by_key('mailchimp_trial_requested_id'), entry)
@@ -133,22 +135,22 @@ class TrialRegisterApplication(GenericWSGIApplication):
         logger.info('Processing Trial Registration for key {0}'.format(key))
         system_id = req.params['system-id']
         if entry.system_id and entry.system_id != system_id:
-            logger.error('Invalid trial register request for key {0}. \
-                   System id from request {1} doesnt match DB {2}'\
+            logger.error('Invalid trial register request for key {0}.'
+                         'System id from request {1} doesnt match DB {2}'\
                    .format(key, system_id, entry.system_id))
         entry.system_id = system_id
 
         license_type = req.params['license-type']
         if entry.type and entry.type != license_type:
-            logger.error('Invalid trial register request for key {0}. \
-                   License Type from request {1} doesnt match DB {2}'\
+            logger.error('Invalid trial register request for key {0}.'
+                         'License type from request {1} doesnt match DB {2}'\
                    .format(key, license_type, entry.type))
         entry.type = license_type
 
         license_quantity = req.params['license-quantity']
         if entry.n and entry.n != license_quantity:
-            logger.error('Invalid trial register request for key {0}. \
-                   License Type from request {1} doesnt match DB {2}'\
+            logger.error('Invalid trial register request for key {0}.'
+                       'License quantity from request {1} doesnt match DB {2}'\
                    .format(key, license_quantity, entry.n))
         entry.n = license_quantity
 
@@ -161,7 +163,7 @@ class TrialRegisterApplication(GenericWSGIApplication):
         session.commit()
 
         # update the opportunity
-        salesforce.update_opportunity(entry)
+        SalesforceAPI.update_opportunity(entry)
         # subscribe the user to the trial workflow if not already
         MailchimpAPI.subscribe_user(\
               System.get_by_key('mailchimp_trial_registered_id'), entry)
@@ -191,54 +193,51 @@ class TrialStartApplication(GenericWSGIApplication):
 
         system_id = req.params['system-id']
         if entry.system_id and entry.system_id != system_id:
-            logger.error('Invalid trial start request for key {0}. \
-                   System id from request {1} doesnt match DB {2}'\
+            logger.error('Invalid trial start request for key {0}.' 
+                         'System id from request {1} doesnt match DB {2}'\
                    .format(key, system_id, entry.system_id))
         entry.system_id = system_id
 
         license_type = req.params['license-type']
         if entry.type and entry.type != license_type:
-            logger.error('Invalid trial start request for key {0}. \
-                   License Type from request {1} doesnt match DB {2}'\
+            logger.error('Invalid trial start request for key {0}. '
+                         'License Type from request {1} doesnt match DB {2}'\
                    .format(key, license_type, entry.type))
         entry.type = license_type
 
-        license_quantity = req.params['license-quantity']
+        license_quantity = int(req.params['license-quantity'])
         if entry.n and entry.n != license_quantity:
-            logger.error('Invalid trial start request for key {0}. \
-                   License Type from request {1} doesnt match DB {2}'\
+            logger.error('Invalid trial start request for key {0}. '
+                         'License Type from request {1} doesnt match DB {2}'\
                    .format(key, license_quantity, entry.n))
         entry.n = license_quantity
 
         session = get_session()
 
         if entry.stageid != Stage.get_by_key('stage_trial_started').id:
+            logger.info('Starting Trial for key {0}'.format(key))
+
             # if this is the trial hasnt started yet start it
             entry.stageid = Stage.get_by_key('stage_trial_started').id
             entry.expiration_time = time_from_today(\
                 days=int(System.get_by_key('trial_reg_expiration_days')))
             entry.trial_start_time = datetime.utcnow()
-            entry.contact_time = datetime.utcnow()
+            entry.contact_time = entry.trial_start_time 
             session.commit()
 
+            logger.info('Trial Start for key {0} success. Expiration {1}'\
+              .format(key, entry.expiration_time))
+
             # update the opportunity
-            salesforce.update_opportunity(entry)
+            SalesforceAPI.update_opportunity(entry)
             # subscribe the user to the trial workflow if not already
             MailchimpAPI.subscribe_user(\
                  System.get_by_key('mailchimp_trial_started_id'), entry)
         else:
+            logger.info('Licensing ping received for key {0}'.format(key))
             # just update the last contact time
             entry.contact_time = datetime.utcnow()
             session.commit()
-
-        # update the opportunity
-        salesforce.update_opportunity(entry)
-        # subscribe the user to the trial workflow if not already
-        MailchimpAPI.subscribe_user(\
-            System.get_by_key('mailchimp_trial_started_id'), entry)
-
-        logger.info('Trial Start for key {0} success. Expiration {1}'\
-              .format(key, entry.expiration_time))
 
         return {'trial': True,
                 'stage': Stage.get_by_id(entry.stageid).name,
@@ -258,18 +257,19 @@ class BuyRequestApplication(GenericWSGIApplication):
                   'Field22':'palette_type', \
                   'Field8':'license_type', \
                   'Field9':'license_cap', \
-                  'field13':'billing_address_line1', \
+                  'Field13':'billing_address_line1', \
                   'Field14':'billing_address_line2', \
                   'Field15':'billing_city', \
                   'Field16':'billing_state', \
                   'Field17':'billing_zip', \
-                  'Field18':'billing_country'}
+                  'Field18':'billing_country', \
+                  'Field330':'amount'}
 
     # additional mapping when alt_billing is set
     ALT_BILLING_FIELDS = {'Field11':'billing_fn', \
-                      'Field12':'billing_ln', \
-                      'Field20':'billing_email', \
-                      'Field19':'billing_phone'}
+                          'Field12':'billing_ln', \
+                          'Field20':'billing_email', \
+                          'Field19':'billing_phone'}
 
     NAMED_USER_TYPE = 'Named-user'
     CORE_USER_TYPE = 'Core'
@@ -328,11 +328,13 @@ class BuyRequestApplication(GenericWSGIApplication):
 
         logger.info('Processing Buy Post request for {0}'.format(key))
 
-        entry.set_values(req.params, entry, BuyRequestApplication.BUY_FIELDS)
+        entry.set_values(req.params, entry, \
+                         BuyRequestApplication.BUY_FIELDS)
+        entry.set_values(req.params, entry, \
+                         BuyRequestApplication.ALT_BILLING_FIELDS)
 
         if req.params['Field225'] == 'Yes! Let me tell you more!':
             entry.alt_billing = True
-            entry.set_values(req.params, entry, ALT_BILLING_FIELDS)
 
         entry.expiration_time = time_from_today(\
             months=int(System.get_by_key('buy_expiration_months')))
@@ -342,7 +344,7 @@ class BuyRequestApplication(GenericWSGIApplication):
         session.commit()
 
         # update the opportunity
-        salesforce.update_opportunity(entry)
+        SalesforceAPI.update_opportunity(entry)
         # subscribe the user to the trial workflow if not already
         MailchimpAPI.subscribe_user(\
             System.get_by_key('mailchimp_closed_won_id'), entry)
@@ -362,17 +364,13 @@ formatter = logging.Formatter(\
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
-salesforce = SalesforceAPI(System.get_by_key('salesforce_username'), \
-                           System.get_by_key('salesforce_password'), \
-                           System.get_by_key('salesforce_token'))
-
 router = Router()
 router.add_route(r'/hello\Z', HelloApplication())
 router.add_route(r'/license\Z', TrialStartApplication())
 router.add_route(r'/support\Z', SupportApplication())
 router.add_route(r'/trial-expired\Z', ExpiredApplication(TRIAL_EXPIRED))
 router.add_route(r'/license-expired\Z', ExpiredApplication(LICENSE_EXPIRED))
-router.add_route(r'/buy\Z', ExpiredApplication(BUY))
+router.add_route(r'/buy\Z', BuyRequestApplication())
 
 router.add_route(r'/api/trial_request\Z', TrialRequestApplication())
 router.add_route(r'/api/trial_register\Z', TrialRegisterApplication())

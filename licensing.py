@@ -29,7 +29,6 @@ class License(Base):
     system_id = Column(String)
 
     # Stage in try/buy workflow
-    #stage = Column(String, nullable=False)
     stageid = Column(Integer, ForeignKey("stage.id"))
 
     # Last connection from Palette Server to licensing
@@ -63,6 +62,8 @@ class License(Base):
 
     # AWS, VMWare or Palette Cloud
     hosting_type = Column(String)
+    # AWS availability zone
+    aws_zone = Column(String)
 
     # Alternate biling contact
     alt_billing = Column(Boolean, default=False)
