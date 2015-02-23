@@ -84,7 +84,7 @@ class TrialRequestApplication(GenericWSGIApplication):
     VMWARE_HOSTING = 'Your Data Center with our VMware Image'
 
     @required_parameters('Field1', 'Field2', 'Field3', 'Field6', 'Field115', \
-                         'Field8', 'Field9')
+                         'Field8', 'Field9', 'Field120')
     def service_POST(self, req):
         """ Handler for Try Palette Form Post
         """

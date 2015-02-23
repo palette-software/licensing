@@ -88,7 +88,8 @@ class SalesforceAPI():
             contact = sf.Contact.create({'Firstname':data.firstname, \
                                          'Lastname':data.lastname, \
                                          'Email':data.email, \
-                                         'Phone':data.phone})
+                                         'Phone':data.phone, \
+                                         'Admin_Role__c':data.admin_role})
             contactid = contact['id']
             logger.info('Creating Contact Name {0} Id {1}'\
                         .format(data.firstname, data.lastname, contactid))
@@ -107,7 +108,8 @@ class SalesforceAPI():
             sf.Contact.Update(contactid, {'Firstname':data.firstname, \
                                          'Lastname':data.lastname, \
                                          'Email':data.email, \
-                                         'Phone':data.phone})
+                                         'Phone':data.phone, \
+                                         'Admin_Role__c':data.admin_role})
             logger.info('Updating Contact Name {0} {1} Id {1}'.\
                        format(data.firstname, data.lastname, contactid))
 
@@ -128,8 +130,13 @@ class SalesforceAPI():
         sf.Opportunity.create({'Name':name, 'AccountId':accountid, \
                               'StageName': Stage.get_by_id(data.stageid).name, \
                               'CloseDate': data.expiration_time.isoformat(), \
+                              'Expiration_Date__c':\
+                                    data.expiration_time.isoformat(), \
                               'Palette_License_Key__c': data.key, \
-                              'Palette_Server_Time_Zone__c': data.timezone \
+                              'Palette_Server_Time_Zone__c': data.timezone, \
+                              'Hosting_Type__c':data.hosting_type, \
+                              'AWS_Region__c':data.aws_zone, \
+                              'Palette_Cloud_subdomain__c':data.subdomain \
                               })
         logger.info('Creating new opportunity with Contact '\
                     'Name {0} {1} Account Id {1}'.\
@@ -152,6 +159,13 @@ class SalesforceAPI():
             oppid = opp['records'][0]['Id']
             sf.Opportunity.update(oppid,
                  {'StageName':Stage.get_by_id(data.stageid).name, \
-                  'CloseDate':data.expiration_time.isoformat() \
+                  'CloseDate':data.expiration_time.isoformat(), \
+                  'Expiration_Date__c':data.expiration_time.isoformat(), \
+                  'Tableau_App_License_Type__c':data.type, \
+                  'Tableau_App_License_Count__c':data.n, \
+                  'System_ID__c':data.system_id, \
+                  'Hosting_Type__c':data.hosting_type, \
+                  'AWS_Region__c':data.aws_zone, \
+                  'Palette_Cloud_subdomain__c':data.subdomain \
                  })
 
