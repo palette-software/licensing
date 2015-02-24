@@ -17,7 +17,6 @@ from support import Support
 from stage import Stage
 from system import System
 # pylint: enable=unused-import
-import config
 
 DATABASE='postgresql://ldb:Tableau2014@localhost/ldb'
 def main():

@@ -25,3 +25,6 @@ def verbose(msg, *args):
 
 def set_verbosity(value):
     STATE.verbose = value
+
+def str2bool(value):
+    return value.lower() in ("yes", "true", "t", "1")

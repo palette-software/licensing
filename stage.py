@@ -1,9 +1,8 @@
 from __future__ import absolute_import
 
-from datetime import datetime
 from akiri.framework.sqlalchemy import Base, get_session
 
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, func
+from sqlalchemy import Column, String, Integer
 from sqlalchemy.orm.exc import NoResultFound
 
 from mixin import BaseMixin
@@ -48,9 +47,9 @@ class Stage(Base, BaseMixin):
             return None
 
     @classmethod
-    def get_by_id(cls, id):
+    def get_by_id(cls, stageid):
         session = get_session()
         try:
-            return session.query(Stage).filter(Stage.id == id).one()
+            return session.query(Stage).filter(Stage.id == stageid).one()
         except NoResultFound:
             return None

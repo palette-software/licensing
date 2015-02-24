@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from datetime import datetime
 from akiri.framework.sqlalchemy import Base, get_session
 
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, func
+from sqlalchemy import Column, String, Integer, DateTime, func
 from sqlalchemy.orm.exc import NoResultFound
 
 from mixin import BaseMixin

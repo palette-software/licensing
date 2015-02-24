@@ -1,6 +1,5 @@
-from datetime import datetime, date
+from datetime import datetime
 import logging
-import config
 
 from stage import Stage
 from system import System
@@ -8,7 +7,7 @@ from simple_salesforce import Salesforce
 
 logger = logging.getLogger('licensing')
 
-class SalesforceAPI():
+class SalesforceAPI(object):
     """ Class that uses the salesforce python module to create
         Contcts, Accounts and Opportunities
     """
@@ -16,12 +15,13 @@ class SalesforceAPI():
     def lookup_account(cls, data):
         """ Lookup an account and return the id
         """
-        sf = Salesforce(username=System.get_by_key('SALESFORCE-USERNAME'), \
-                        password=System.get_by_key('SALESFORCE-PASSWORD'), \
-                        security_token=System.get_by_key('SALESFORCE-TOKEN'))
+        salesforce = Salesforce(
+            username=System.get_by_key('SALESFORCE-USERNAME'), \
+            password=System.get_by_key('SALESFORCE-PASSWORD'), \
+            security_token=System.get_by_key('SALESFORCE-TOKEN'))
 
-        account = sf.query("""SELECT Name, id
-                  FROM Account where Name='{0}'""".format(data.organization))
+        sql = "SELECT Name, id FROM Account where Name='{0}'"
+        account = salesforce.query(sql.format(data.organization))
         if account is None or account['totalSize'] == 0:
             accountid = None
         else:
@@ -34,15 +34,15 @@ class SalesforceAPI():
         """
         accountid = cls.lookup_account(data)
         if accountid is None:
-            sf = Salesforce(username=System.get_by_key('SALESFORCE-USERNAME'), \
+            salesforce = Salesforce(\
+                        username=System.get_by_key('SALESFORCE-USERNAME'), \
                         password=System.get_by_key('SALESFORCE-PASSWORD'), \
                         security_token=System.get_by_key('SALESFORCE-TOKEN'))
-            account = sf.Account.create({'Name':data.organization, \
-                                         'Phone':data.phone})
+            account = salesforce.Account.create({'Name':data.organization, \
+                                                 'Phone':data.phone})
             accountid = account['id']
-            logger.info('Creating Account Name {0} Id {1}'\
-                         .format(data.organization, accountid))
-
+            logger.info('Creating Account Name %s Id %s', \
+                        data.organization, accountid)
         return accountid
 
     @classmethod
@@ -51,25 +51,27 @@ class SalesforceAPI():
         """
         accountid = cls.lookup_account(data)
         if accountid is None:
-            sf = Salesforce(username=System.get_by_key('SALESFORCE-USERNAME'), \
+            salesforce = Salesforce(\
+                        username=System.get_by_key('SALESFORCE-USERNAME'), \
                         password=System.get_by_key('SALESFORCE-PASSWORD'), \
                         security_token=System.get_by_key('SALESFORCE-TOKEN'))
-            sf.Account.update(accountid, 
-                 {'Name':data.organization, \
-                  'Phone':data.phone})
-            logger.info('Updating Account Name {0} Id {1}'\
-                        .format(data.organization, accountid))
+            salesforce.Account.update(accountid,
+                                      {'Name':data.organization, \
+                                       'Phone':data.phone})
+            logger.info('Updating Account Name %s Id %s', \
+                        data.organization, accountid)
 
     @classmethod
     def lookup_contact(cls, data):
         """ Lookup a contact
         """
-        sf = Salesforce(username=System.get_by_key('SALESFORCE-USERNAME'), \
+        salesforce = Salesforce(\
+                        username=System.get_by_key('SALESFORCE-USERNAME'), \
                         password=System.get_by_key('SALESFORCE-PASSWORD'), \
                         security_token=System.get_by_key('SALESFORCE-TOKEN'))
-        contact = sf.query("""SELECT Name, id
-                  FROM Contact where Firstname='{0}' and Lastname='{1}'"""\
-                  .format(data.firstname, data.lastname))
+        sql = "SELECT Name, id " +\
+              "FROM Contact where Firstname='{0}' and Lastname='{1}'"
+        contact = salesforce.query(sql.format(data.firstname, data.lastname))
         if contact is None or contact['totalSize'] == 0:
             contactid = None
         else:
@@ -82,17 +84,19 @@ class SalesforceAPI():
         """
         contactid = cls.lookup_contact(data)
         if contactid is None:
-            sf = Salesforce(username=System.get_by_key('SALESFORCE-USERNAME'), \
+            salesforce = Salesforce(\
+                        username=System.get_by_key('SALESFORCE-USERNAME'), \
                         password=System.get_by_key('SALESFORCE-PASSWORD'), \
                         security_token=System.get_by_key('SALESFORCE-TOKEN'))
-            contact = sf.Contact.create({'Firstname':data.firstname, \
-                                         'Lastname':data.lastname, \
-                                         'Email':data.email, \
-                                         'Phone':data.phone, \
-                                         'Admin_Role__c':data.admin_role})
+            contact = salesforce.Contact.create(\
+                                            {'Firstname':data.firstname, \
+                                             'Lastname':data.lastname, \
+                                             'Email':data.email, \
+                                             'Phone':data.phone, \
+                                             'Admin_Role__c':data.admin_role})
             contactid = contact['id']
-            logger.info('Creating Contact Name {0} Id {1}'\
-                        .format(data.firstname, data.lastname, contactid))
+            logger.info('Creating Contact Name %s %s Id%d',
+                        data.firstname, data.lastname, contactid)
 
         return contactid
 
@@ -102,70 +106,72 @@ class SalesforceAPI():
         """
         contactid = cls.lookup_contact(data)
         if contactid is not None:
-            sf = Salesforce(username=System.get_by_key('SALESFORCE-USERNAME'), \
+            salesforce = Salesforce(\
+                        username=System.get_by_key('SALESFORCE-USERNAME'), \
                         password=System.get_by_key('SALESFORCE-PASSWORD'), \
                         security_token=System.get_by_key('SALESFORCE-TOKEN'))
-            sf.Contact.Update(contactid, {'Firstname':data.firstname, \
-                                         'Lastname':data.lastname, \
-                                         'Email':data.email, \
-                                         'Phone':data.phone, \
-                                         'Admin_Role__c':data.admin_role})
-            logger.info('Updating Contact Name {0} {1} Id {1}'.\
-                       format(data.firstname, data.lastname, contactid))
+            salesforce.Contact.Update(contactid,
+                                      {'Firstname':data.firstname, \
+                                       'Lastname':data.lastname, \
+                                       'Email':data.email, \
+                                       'Phone':data.phone, \
+                                       'Admin_Role__c':data.admin_role})
+            logger.info('Updating Contact Name %s %s Id %d', \
+                        data.firstname, data.lastname, contactid)
 
     @classmethod
     def new_opportunity(cls, data):
         """ Create a new Salesforce Opportunity
         """
-        contactid = cls.lookup_or_create_contact(data)
         accountid = cls.lookup_or_create_account(data)
 
         name = data.organization + ' ' + \
                data.firstname + ' ' + data.lastname + ' ' +\
                datetime.utcnow().strftime('%x %X')
 
-        sf = Salesforce(username=System.get_by_key('SALESFORCE-USERNAME'), \
+        salesforce = Salesforce(\
+                        username=System.get_by_key('SALESFORCE-USERNAME'), \
                         password=System.get_by_key('SALESFORCE-PASSWORD'), \
                         security_token=System.get_by_key('SALESFORCE-TOKEN'))
-        sf.Opportunity.create({'Name':name, 'AccountId':accountid, \
-                              'StageName': Stage.get_by_id(data.stageid).name, \
-                              'CloseDate': data.expiration_time.isoformat(), \
-                              'Expiration_Date__c':\
-                                    data.expiration_time.isoformat(), \
-                              'Palette_License_Key__c': data.key, \
-                              'Palette_Server_Time_Zone__c': data.timezone, \
-                              'Hosting_Type__c':data.hosting_type, \
-                              'AWS_Region__c':data.aws_zone, \
-                              'Palette_Cloud_subdomain__c':data.subdomain \
-                              })
-        logger.info('Creating new opportunity with Contact '\
-                    'Name {0} {1} Account Id {1}'.\
-                     format(data.firstname, data.lastname, accountid))
+        salesforce.Opportunity.create(\
+                {'Name':name, 'AccountId':accountid, \
+                 'StageName': Stage.get_by_id(data.stageid).name, \
+                 'CloseDate': data.expiration_time.isoformat(), \
+                 'Expiration_Date__c': data.expiration_time.isoformat(), \
+                 'Palette_License_Key__c': data.key, \
+                 'Palette_Server_Time_Zone__c': data.timezone, \
+                 'Hosting_Type__c':data.hosting_type, \
+                 'AWS_Region__c':data.aws_zone, \
+                 'Palette_Cloud_subdomain__c':data.subdomain, \
+             })
+        logger.info('Creating new opportunity with Contact ' + \
+                    'Name %s %s Account Id %s',
+                    data.firstname, data.lastname, accountid)
 
     @classmethod
     def update_opportunity(cls, data):
         """ Update a Salesforce Opportunity
         """
-        sf = Salesforce(username=System.get_by_key('SALESFORCE-USERNAME'), \
-                        password=System.get_by_key('SALESFORCE-PASSWORD'), \
-                        security_token=System.get_by_key('SALESFORCE-TOKEN'))
-        opp = sf.query("""SELECT Name, id FROM Opportunity
-                          where Palette_License_Key__c='{0}'""".\
-                          format(data.key))
+        salesforce = Salesforce(
+            username=System.get_by_key('SALESFORCE-USERNAME'), \
+            password=System.get_by_key('SALESFORCE-PASSWORD'), \
+            security_token=System.get_by_key('SALESFORCE-TOKEN'))
+        sql = "SELECT Name, id FROM Opportunity " +\
+              "WHERE Palette_License_Key__c='{0}'"
+        opp = salesforce.query(sql.format(data.key))
         if opp is not None and opp['totalSize'] == 1:
-            logger.info('Updating opportunity Key {0} Stage {1}'\
-                     .format(data.key, Stage.get_by_id(data.stageid).name))
+            logger.info('Updating opportunity Key %s Stage %s',
+                        data.key, Stage.get_by_id(data.stageid).name)
 
             oppid = opp['records'][0]['Id']
-            sf.Opportunity.update(oppid,
-                 {'StageName':Stage.get_by_id(data.stageid).name, \
-                  'CloseDate':data.expiration_time.isoformat(), \
-                  'Expiration_Date__c':data.expiration_time.isoformat(), \
-                  'Tableau_App_License_Type__c':data.type, \
-                  'Tableau_App_License_Count__c':data.n, \
-                  'System_ID__c':data.system_id, \
-                  'Hosting_Type__c':data.hosting_type, \
-                  'AWS_Region__c':data.aws_zone, \
-                  'Palette_Cloud_subdomain__c':data.subdomain \
-                 })
-
+            salesforce.Opportunity.update(oppid,
+                {'StageName':Stage.get_by_id(data.stageid).name, \
+                 'CloseDate':data.expiration_time.isoformat(), \
+                 'Expiration_Date__c':data.expiration_time.isoformat(), \
+                 'Tableau_App_License_Type__c':data.type, \
+                 'Tableau_App_License_Count__c':data.n, \
+                 'System_ID__c':data.system_id, \
+                 'Hosting_Type__c':data.hosting_type, \
+                 'AWS_Region__c':data.aws_zone, \
+                 'Palette_Cloud_subdomain__c':data.subdomain \
+             })

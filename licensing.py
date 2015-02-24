@@ -34,6 +34,9 @@ class License(Base):
     # Last connection from Palette Server to licensing
     contact_time = Column(DateTime)
 
+    # Trial or Not
+    trial = Column(Boolean, nullable=False)
+
     # Expiration date/time of this stage
     expiration_time = Column(DateTime, nullable=False)
 

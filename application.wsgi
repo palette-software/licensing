@@ -22,10 +22,10 @@ from system import System
 from support import Support
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
-from util import str2bool
+from utils import str2bool
 from slack_api import SlackAPI
 
-import config
+DATABASE = 'postgresql://ldb:Tableau2014@localhost/licensedb'
 
 # FIXME: https
 LICENSE_EXPIRED = 'http://www.palette-software.com/license-expired'
@@ -112,6 +112,7 @@ class TrialRequestApplication(GenericWSGIApplication):
         entry.expiration_time = time_from_today(\
             days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
         entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
+        entry.trial = True #FIXME
 
         session = get_session()
         session.add(entry)
@@ -371,7 +372,8 @@ class BuyRequestApplication(GenericWSGIApplication):
         logger.info('Buy request success for {0}'.format(key))
 
 # pylint: disable=invalid-name
-create_engine(config.db_url, echo=False, pool_size=20, max_overflow=50)
+database = DATABASE
+create_engine(database, echo=False, pool_size=20, max_overflow=30)
 
 # Setup logging
 logger = logging.getLogger('licensing')
@@ -391,7 +393,8 @@ router.add_route(r'/trial-expired\Z', ExpiredApplication(TRIAL_EXPIRED))
 router.add_route(r'/license-expired\Z', ExpiredApplication(LICENSE_EXPIRED))
 router.add_route(r'/buy\Z', BuyRequestApplication())
 
-router.add_route(r'/api/trial_request\Z', TrialRequestApplication())
+router.add_route(r'/api/trial_request\Z|/api/trial\Z',
+                 TrialRequestApplication())
 router.add_route(r'/api/trial_register\Z', TrialRegisterApplication())
 router.add_route(r'/api/trial_start\Z', TrialStartApplication())
 router.add_route(r'/api/buy_request', BuyRequestApplication())
