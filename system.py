@@ -45,7 +45,7 @@ class System(Base, BaseMixin):
     {'key':'USER-PRICE',
      'value':'60'},
     {'key':'SEND-SLACK',
-     'value':'false'},
+     'value':'true'},
     {'key':'SENDWITHUS-APIKEY',
      'value':''},
     {'key':'SENDWITHUS-TRIAL-REQUESTED-ID',
