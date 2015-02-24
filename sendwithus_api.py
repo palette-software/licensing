@@ -8,8 +8,7 @@ logger = logging.getLogger('licensing')
 class SendwithusAPI():
     @classmethod
     def subscribe_user(cls,  mailid, data):
-        apikey = System.get_by_key('sendwithus_apikey')
-        print apikey,mailid
+        apikey = System.get_by_key('SENDWITHUS-APIKEY')
         api = sendwithus.api(api_key=apikey)
         r = api.start_on_drip_campaign(
             mailid,

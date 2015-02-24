@@ -16,9 +16,9 @@ class SalesforceAPI():
     def lookup_account(cls, data):
         """ Lookup an account and return the id
         """
-        sf = Salesforce(username=System.get_by_key('salesforce_username'), \
-                        password=System.get_by_key('salesforce_password'), \
-                        security_token=System.get_by_key('salesforce_token'))
+        sf = Salesforce(username=System.get_by_key('SALESFORCE-USERNAME'), \
+                        password=System.get_by_key('SALESFORCE-PASSWORD'), \
+                        security_token=System.get_by_key('SALESFORCE-TOKEN'))
 
         account = sf.query("""SELECT Name, id
                   FROM Account where Name='{0}'""".format(data.organization))
@@ -34,9 +34,9 @@ class SalesforceAPI():
         """
         accountid = cls.lookup_account(data)
         if accountid is None:
-            sf = Salesforce(username=System.get_by_key('salesforce_username'), \
-                        password=System.get_by_key('salesforce_password'), \
-                        security_token=System.get_by_key('salesforce_token'))
+            sf = Salesforce(username=System.get_by_key('SALESFORCE-USERNAME'), \
+                        password=System.get_by_key('SALESFORCE-PASSWORD'), \
+                        security_token=System.get_by_key('SALESFORCE-TOKEN'))
             account = sf.Account.create({'Name':data.organization, \
                                          'Phone':data.phone})
             accountid = account['id']
@@ -51,9 +51,9 @@ class SalesforceAPI():
         """
         accountid = cls.lookup_account(data)
         if accountid is None:
-            sf = Salesforce(username=System.get_by_key('salesforce_username'), \
-                        password=System.get_by_key('salesforce_password'), \
-                        security_token=System.get_by_key('salesforce_token'))
+            sf = Salesforce(username=System.get_by_key('SALESFORCE-USERNAME'), \
+                        password=System.get_by_key('SALESFORCE-PASSWORD'), \
+                        security_token=System.get_by_key('SALESFORCE-TOKEN'))
             sf.Account.update(accountid, 
                  {'Name':data.organization, \
                   'Phone':data.phone})
@@ -64,9 +64,9 @@ class SalesforceAPI():
     def lookup_contact(cls, data):
         """ Lookup a contact
         """
-        sf = Salesforce(username=System.get_by_key('salesforce_username'), \
-                        password=System.get_by_key('salesforce_password'), \
-                        security_token=System.get_by_key('salesforce_token'))
+        sf = Salesforce(username=System.get_by_key('SALESFORCE-USERNAME'), \
+                        password=System.get_by_key('SALESFORCE-PASSWORD'), \
+                        security_token=System.get_by_key('SALESFORCE-TOKEN'))
         contact = sf.query("""SELECT Name, id
                   FROM Contact where Firstname='{0}' and Lastname='{1}'"""\
                   .format(data.firstname, data.lastname))
@@ -82,9 +82,9 @@ class SalesforceAPI():
         """
         contactid = cls.lookup_contact(data)
         if contactid is None:
-            sf = Salesforce(username=System.get_by_key('salesforce_username'), \
-                        password=System.get_by_key('salesforce_password'), \
-                        security_token=System.get_by_key('salesforce_token'))
+            sf = Salesforce(username=System.get_by_key('SALESFORCE-USERNAME'), \
+                        password=System.get_by_key('SALESFORCE-PASSWORD'), \
+                        security_token=System.get_by_key('SALESFORCE-TOKEN'))
             contact = sf.Contact.create({'Firstname':data.firstname, \
                                          'Lastname':data.lastname, \
                                          'Email':data.email, \
@@ -102,9 +102,9 @@ class SalesforceAPI():
         """
         contactid = cls.lookup_contact(data)
         if contactid is not None:
-            sf = Salesforce(username=System.get_by_key('salesforce_username'), \
-                        password=System.get_by_key('salesforce_password'), \
-                        security_token=System.get_by_key('salesforce_token'))
+            sf = Salesforce(username=System.get_by_key('SALESFORCE-USERNAME'), \
+                        password=System.get_by_key('SALESFORCE-PASSWORD'), \
+                        security_token=System.get_by_key('SALESFORCE-TOKEN'))
             sf.Contact.Update(contactid, {'Firstname':data.firstname, \
                                          'Lastname':data.lastname, \
                                          'Email':data.email, \
@@ -124,9 +124,9 @@ class SalesforceAPI():
                data.firstname + ' ' + data.lastname + ' ' +\
                datetime.utcnow().strftime('%x %X')
 
-        sf = Salesforce(username=System.get_by_key('salesforce_username'), \
-                        password=System.get_by_key('salesforce_password'), \
-                        security_token=System.get_by_key('salesforce_token'))
+        sf = Salesforce(username=System.get_by_key('SALESFORCE-USERNAME'), \
+                        password=System.get_by_key('SALESFORCE-PASSWORD'), \
+                        security_token=System.get_by_key('SALESFORCE-TOKEN'))
         sf.Opportunity.create({'Name':name, 'AccountId':accountid, \
                               'StageName': Stage.get_by_id(data.stageid).name, \
                               'CloseDate': data.expiration_time.isoformat(), \
@@ -146,9 +146,9 @@ class SalesforceAPI():
     def update_opportunity(cls, data):
         """ Update a Salesforce Opportunity
         """
-        sf = Salesforce(username=System.get_by_key('salesforce_username'), \
-                        password=System.get_by_key('salesforce_password'), \
-                        security_token=System.get_by_key('salesforce_token'))
+        sf = Salesforce(username=System.get_by_key('SALESFORCE-USERNAME'), \
+                        password=System.get_by_key('SALESFORCE-PASSWORD'), \
+                        security_token=System.get_by_key('SALESFORCE-TOKEN'))
         opp = sf.query("""SELECT Name, id FROM Opportunity
                           where Palette_License_Key__c='{0}'""".\
                           format(data.key))

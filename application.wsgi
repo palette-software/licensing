@@ -20,9 +20,9 @@ from stage import Stage
 from licensing import License
 from system import System
 from support import Support
-from mailchimp_api import MailchimpAPI
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
+from util import str2bool
 from slack_api import SlackAPI
 
 import config
@@ -103,8 +103,8 @@ class TrialRequestApplication(GenericWSGIApplication):
         entry.name = org
         entry.key = str(uuid.uuid4())
         entry.expiration_time = time_from_today(\
-            days=int(System.get_by_key('trial_req_expiration_days')))
-        entry.stageid = Stage.get_by_key('stage_trial_requested').id
+            days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
+        entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
 
         session = get_session()
         session.add(entry)
@@ -114,17 +114,18 @@ class TrialRequestApplication(GenericWSGIApplication):
         SalesforceAPI.new_opportunity(entry)
         # subscribe the user to the trial list 
         if entry.hosting_type == TrialRequestApplication.AWS_HOSTING:
-            mailid = System.get_by_key('sendwithus_trial_requested_id')
+            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-ID')
         elif entry.hosting_type == TrialRequestApplication.VMWARE_HOSTING:
-            mailid = System.get_by_key('sendwithus_trial_requested_vmware_id')
+            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-VMWARE-ID')
         else:
-            mailid = System.get_by_key('sendwithus_trial_requested_pcloud_id')
+            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-PCLOUD-ID')
         SendwithusAPI.subscribe_user(mailid, entry)
 
-        SlackAPI.notify('Trial request from: '
-                        '{0} ({1}) Org: {2} - Type: {3}'.format(\
-                        entry.firstname + ' ' + entry.lastname, entry.email, \
-                        entry.organization, entry.hosting_type))
+        if str2bool(System.get_by_key('SEND-SLACK')) == True:
+            SlackAPI.notify('Trial request from: '
+                    '{0} ({1}) Org: {2} - Type: {3}'.format(\
+                    entry.firstname + ' ' + entry.lastname, entry.email, \
+                    entry.organization, entry.hosting_type))
 
         logger.info('Trial request success for {0} {1}'\
                     .format(entry.email, entry.key))
@@ -167,9 +168,9 @@ class TrialRegisterApplication(GenericWSGIApplication):
                    .format(key, license_quantity, entry.n))
         entry.n = license_quantity
 
-        entry.stageid = Stage.get_by_key('stage_trial_registered').id
+        entry.stageid = Stage.get_by_key('STAGE-TRIAL-REGISTERED').id
         entry.expiration_time = time_from_today(\
-             days=int(System.get_by_key('trial_req_expiration_days')))
+             days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
         entry.registration_start_time = datetime.utcnow()
         entry.contact_time = datetime.utcnow()
         session = get_session()
@@ -178,8 +179,8 @@ class TrialRegisterApplication(GenericWSGIApplication):
         # update the opportunity
         SalesforceAPI.update_opportunity(entry)
         # subscribe the user to the trial workflow if not already
-        MailchimpAPI.subscribe_user(\
-              System.get_by_key('mailchimp_trial_registered_id'), entry)
+        SendwithusAPI.subscribe_user(\
+              System.get_by_key('SENDWITHUS-TRIAL-REGISTERED-ID'), entry)
 
         logger.info('Trial Registration for key {0} success. Expiration {1}'\
               .format(key, entry.expiration_time))
@@ -225,13 +226,13 @@ class TrialStartApplication(GenericWSGIApplication):
 
         session = get_session()
 
-        if entry.stageid != Stage.get_by_key('stage_trial_started').id:
+        if entry.stageid != Stage.get_by_key('STAGE-TRIAL-STARTED').id:
             logger.info('Starting Trial for key {0}'.format(key))
 
             # if this is the trial hasnt started yet start it
-            entry.stageid = Stage.get_by_key('stage_trial_started').id
+            entry.stageid = Stage.get_by_key('STAGE-TRIAL-STARTED').id
             entry.expiration_time = time_from_today(\
-                days=int(System.get_by_key('trial_reg_expiration_days')))
+                days=int(System.get_by_key('TRIAL-REG-EXPIRATION-DAYS')))
             entry.trial_start_time = datetime.utcnow()
             entry.contact_time = entry.trial_start_time 
             session.commit()
@@ -242,8 +243,8 @@ class TrialStartApplication(GenericWSGIApplication):
             # update the opportunity
             SalesforceAPI.update_opportunity(entry)
             # subscribe the user to the trial workflow if not already
-            MailchimpAPI.subscribe_user(\
-                 System.get_by_key('mailchimp_trial_started_id'), entry)
+            SendwithusAPI.subscribe_user(\
+                 System.get_by_key('SENDWITHUS-TRIAL-STARTED-ID'), entry)
         else:
             logger.info('Licensing ping received for key {0}'.format(key))
             # just update the last contact time
@@ -288,9 +289,9 @@ class BuyRequestApplication(GenericWSGIApplication):
     def calculate_price(self, count, type):
         val = 0
         if type == BuyRequestApplication.NAMED_USER_TYPE:
-            val = int(System.get_by_key('user_price')) * count
+            val = int(System.get_by_key('USER-PRICE')) * count
         elif type == BuyRequestApplication.CORE_USER_TYPE:
-            val = int(System.get_by_key('core_price')) * count
+            val = int(System.get_by_key('CORE-PRICE')) * count
         return Decimal(val)
 
     def service_GET(self, req):
@@ -316,7 +317,7 @@ class BuyRequestApplication(GenericWSGIApplication):
                   'field9':entry.n, 'field330':amount}
         url_items = [kvp(k, v) for k, v in fields.iteritems()]
         url = '&'.join(url_items)
-        location = '{0}/{1}'.format(System.get_by_key('buy_url'), url)
+        location = '{0}/{1}'.format(System.get_by_key('BUY-URL'), url)
         raise exc.HTTPTemporaryRedirect(location=location)
 
     @required_parameters('Field3', 'Field4', 'Field6', 'Field5', 'Field21',
@@ -348,17 +349,17 @@ class BuyRequestApplication(GenericWSGIApplication):
             entry.alt_billing = True
 
         entry.expiration_time = time_from_today(\
-            months=int(System.get_by_key('buy_expiration_months')))
+            months=int(System.get_by_key('BUY-EXPIRATION-MONTHS')))
         entry.license_start_time = datetime.utcnow()
-        entry.stageid = Stage.get_by_key('stage_closed_won').id
+        entry.stageid = Stage.get_by_key('TRIAL-CLOSED-WON').id
         session = get_session()
         session.commit()
 
         # update the opportunity
         SalesforceAPI.update_opportunity(entry)
         # subscribe the user to the trial workflow if not already
-        MailchimpAPI.subscribe_user(\
-            System.get_by_key('mailchimp_closed_won_id'), entry)
+        SendwithusAPI.subscribe_user(\
+            System.get_by_key('SENDWITHUS-CLOSED-WON-ID'), entry)
 
         logger.info('Buy request success for {0}'.format(key))
 

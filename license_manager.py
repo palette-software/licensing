@@ -5,10 +5,12 @@ import time
 from akiri.framework.sqlalchemy import create_engine, get_session
 from licensing import License
 from salesforce_api import SalesforceAPI
-from mailchimp_api import MailchimpAPI
+from sendwithus_api import SendwithusAPI
 
-import logging
 import config
+import logging
+from stage import Stage
+from system import System
 
 # Setup logging
 logger = logging.getLogger('license manager')
@@ -22,54 +24,56 @@ logger.addHandler(ch)
 
 class LicenseManager():
     def CheckExpired(self):
-        logger.info('Checking Licenes')
-        requested = get_config('sf_stage_trial_requested')
-        registered = get_config('sf_stage_trial_registered')
-        started = get_config('sf_stage_trial_started')
-        expired = get_config('sf_stage_trial_expired')
-        won = get_config('sf_stage_closed_won')
-        not_installed = get_config('sf_stage_trial_notinstalled')
-        no_response = get_config('sf_stage_trial_noresponse')
-        renewal = get_config('sf_stage_up_for_renewal')
+        logger.info('Checking Licenses')
+
+        requested = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
+        registered = Stage.get_by_key('STAGE-TRIAL-REGISTERED').id
+        started = Stage.get_by_key('STAGE-TRIAL-STARTED').id
+        expired = Stage.get_by_key('STAGE-TRIAL-EXPIRED').id
+        won = Stage.get_by_key('STAGE-CLOSED-WON').id
+        not_installed = Stage.get_by_key('STAGE-TRIAL-NOTINSTALLED').id
+        no_response = Stage.get_by_key('STAGE-TRIAL-NORESPONSE').id
+        renewal = Stage.get_by_key('STAGE-UP-FOR-RENEWAL').id
 
         rows = License.get_expired_licenses(requested)
         for i in rows:
             logger.info('Trial requests expired {0}'.format(i))
             License.change_stage(i, not_installed)
             salesforce.update_opportunity(i)
-            mailchimp.subscribe_user(\
-                             get_config('mailchimp_trial_notinstalled_id', i))
+            SendwithusAPI.subscribe_user(\
+                 System.get_by_key('SENDWITHUS-TRIAL-NOTINSTALLED-ID', i))
 
         rows = License.get_expired_licenses(registered)
         for i in rows:
             logger.info('Expired Registrations {0}'.format(i))
             License.change_stage(i, no_response)
             salesforce.update_opportunity(i)
-            mailchimp.subscribe_user(\
-                             get_config('mailchimp_trial_noresponse_id', i))
+            SendwithusAPI.subscribe_user(\
+                 System.get_by_key('SENDWITHUS-TRIAL-NORESPONSE-ID', i))
 
         rows = License.get_expired_licenses(started)
         for i in rows:
             logger.info('Expired Trials {0}'.format(i))
             License.change_stage(i, expired)
             salesforce.update_opportunity(i)
-            mailchimp.subscribe_user(\
-                             get_config('mailchimp_trial_expired_id', i))
+            SendwithusAPI.subscribe_user(\
+                 System.get_by_key('SENDWITHUS-TRIAL-EXPIRED-ID', i))
 
         rows = License.get_expired_licenses(won)
         for i in rows:
             logger.info('Expired Closed Won {0}'.format(i))
             License.change_stage(i, renewal)
             salesforce.update_opportunity(i)
-            mailchimp.subscribe_user(\
-                             get_config('mailchimp_up_for_renewal_id', i))
+            SendwithusAPI.subscribe_user(\
+                 System.get_by_key('SENDWITHUS-UP-FOR-RENEWAL-ID', i))
 
     """
     """
     def Start(self):
+        sleep_interval = float(System.get_by_key('LICENSE-CHECK-INTERVAL'))
         while True:
            self.CheckExpired()
-           time.sleep(get_config_float('license_check_interval'))
+           time.sleep(sleep_interval)
 
 if __name__ == '__main__':
     # pylint: disable=invalid-name

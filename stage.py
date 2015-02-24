@@ -18,25 +18,25 @@ class Stage(Base, BaseMixin):
     key = Column(String, nullable=False, unique=True)
     name = Column(String, nullable=False)
 
-    defaults = [{'key' : 'stage_trial_requested',
+    defaults = [{'key' : 'STAGE-TRIAL-REQUESTED',
                  'name': 'Trial Requested'},
-                {'key'  : 'stage_trial_registered',
+                {'key'  : 'STAGE-TRIAL-REGISTERED',
                  'name': 'Trial Registered'},
-                {'key'  : 'stage_trial_notinstalled',
+                {'key'  : 'STAGE-TRIAL-NOTINSTALLED',
                  'name': 'Trial Not Installed'},
-                {'key'  : 'stage_trial_noresponse',
+                {'key'  : 'STAGE-TRIAL-NORESPONSE',
                  'name': 'Trial No Response'},
-                {'key'  : 'stage_trial_started',
+                {'key'  : 'STAGE-TRIAL-STARTED',
                  'name': 'Trial Started'},
-                {'key'  : 'stage_trial_expired',
+                {'key'  : 'STAGE-TRIAL-EXPIRED',
                  'name': 'Trial Expired'},
-                {'key'  : 'stage_trial_extended',
+                {'key'  : 'STAGE-TRIAL-EXTENDED',
                  'name': 'Trial Extended'},
-                {'key'  : 'stage_license_expired',
+                {'key'  : 'STAGE-LICENSE-EXPIRED',
                  'name': 'License Expired'},
-                {'key'  : 'stage_up_for_renewal',
+                {'key'  : 'STAGE-UP-FOR-RENEWAL',
                  'name': 'Up For Renewal'},
-                {'key'  : 'stage_closed_won',
+                {'key'  : 'STAGE-CLOSED-WON',
                  'name': 'Closed Won'}]
 
     @classmethod
