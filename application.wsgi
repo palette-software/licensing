@@ -351,7 +351,7 @@ class BuyRequestApplication(GenericWSGIApplication):
         entry.expiration_time = time_from_today(\
             months=int(System.get_by_key('BUY-EXPIRATION-MONTHS')))
         entry.license_start_time = datetime.utcnow()
-        entry.stageid = Stage.get_by_key('TRIAL-CLOSED-WON').id
+        entry.stageid = Stage.get_by_key('STAGE-CLOSED-WON').id
         session = get_session()
         session.commit()
 
