@@ -80,7 +80,7 @@ class License(Base):
     billing_zip = Column(String)
     billing_country = Column(String)
 
-    amount = Column(Numeric(8,2))
+    amount = Column(Numeric(8, 2))
 
     creation_time = Column(DateTime, server_default=func.now())
     last_update = Column(DateTime, default=datetime.utcnow(),
@@ -121,9 +121,4 @@ class License(Base):
             row.expiration_time = expiration
         session.commit()
 
-    def set_values(self, source, dest, fields):
-        for name, dest_attr in fields.items():
-            value = source.get(name)
-            if value is not None:
-                setattr(self, dest_attr, value)
 

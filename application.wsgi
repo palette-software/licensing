@@ -36,11 +36,18 @@ def time_from_today(hours=0, days=0, months=0):
     return datetime.utcnow() + \
            relativedelta(hours=hours, days=days, months=months)
 
-def kvp(k, v):
-    if v is not None:
-        return str(k) + '=' + urllib.quote(str(v))
+def kvp(key, value):
+    if value is not None:
+        return str(key) + '=' + urllib.quote(str(value))
     else:
-        return str(k) + '='
+        return str(key) + '='
+
+def translate_values(source, entry, fields):
+    """Convert fields values to the appropriate values in the entry."""
+    for name, dest_attr in fields.items():
+        value = source.get(name)
+        if value is not None:
+            setattr(entry, dest_attr, value)
 
 class SupportApplication(GenericWSGIApplication):
 
@@ -88,9 +95,9 @@ class TrialRequestApplication(GenericWSGIApplication):
     def service_POST(self, req):
         """ Handler for Try Palette Form Post
         """
-        fn = req.params['Field1']
-        ln = req.params['Field2']
-        fullname = fn + " " + ln
+        firstname = req.params['Field1']
+        lastname = req.params['Field2']
+        fullname = firstname + " " + lastname
         email = req.params['Field3']
         org = req.params['Field6']
 
@@ -98,8 +105,8 @@ class TrialRequestApplication(GenericWSGIApplication):
               .format(org, fullname, email))
 
         entry = License()
-        entry.set_values(req.params, entry, \
-           TrialRequestApplication.TRIAL_FIELDS)
+        translate_values(req.params, entry, \
+                         TrialRequestApplication.TRIAL_FIELDS)
         entry.name = org
         entry.key = str(uuid.uuid4())
         entry.expiration_time = time_from_today(\
@@ -112,7 +119,7 @@ class TrialRequestApplication(GenericWSGIApplication):
 
         # create or use an existing opportunity
         SalesforceAPI.new_opportunity(entry)
-        # subscribe the user to the trial list 
+        # subscribe the user to the trial list
         if entry.hosting_type == TrialRequestApplication.AWS_HOSTING:
             mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-ID')
         elif entry.hosting_type == TrialRequestApplication.VMWARE_HOSTING:
@@ -205,7 +212,7 @@ class TrialStartApplication(GenericWSGIApplication):
 
         system_id = req.params['system-id']
         if entry.system_id and entry.system_id != system_id:
-            logger.error('Invalid trial start request for key {0}.' 
+            logger.error('Invalid trial start request for key {0}.'
                          'System id from request {1} doesnt match DB {2}'\
                    .format(key, system_id, entry.system_id))
         entry.system_id = system_id
@@ -234,7 +241,7 @@ class TrialStartApplication(GenericWSGIApplication):
             entry.expiration_time = time_from_today(\
                 days=int(System.get_by_key('TRIAL-REG-EXPIRATION-DAYS')))
             entry.trial_start_time = datetime.utcnow()
-            entry.contact_time = entry.trial_start_time 
+            entry.contact_time = entry.trial_start_time
             session.commit()
 
             logger.info('Trial Start for key {0} success. Expiration {1}'\
@@ -286,11 +293,11 @@ class BuyRequestApplication(GenericWSGIApplication):
     NAMED_USER_TYPE = 'Named-user'
     CORE_USER_TYPE = 'Core'
 
-    def calculate_price(self, count, type):
+    def calculate_price(self, count, license_type):
         val = 0
-        if type == BuyRequestApplication.NAMED_USER_TYPE:
+        if license_type == BuyRequestApplication.NAMED_USER_TYPE:
             val = int(System.get_by_key('USER-PRICE')) * count
-        elif type == BuyRequestApplication.CORE_USER_TYPE:
+        elif license_type == BuyRequestApplication.CORE_USER_TYPE:
             val = int(System.get_by_key('CORE-PRICE')) * count
         return Decimal(val)
 
@@ -324,7 +331,7 @@ class BuyRequestApplication(GenericWSGIApplication):
                          'Field22', 'Field8', 'Field9', \
                          'Field13', 'Field14', 'Field15', 'Field16', \
                          'Field17', 'Field18', 'Field225', \
-                         'Field11', 'Field12','Field20', 'Field19', \
+                         'Field11', 'Field12', 'Field20', 'Field19', \
                          'Field7', 'Field330')
     def service_POST(self, req):
         """ Handle a Buy Request
@@ -340,9 +347,9 @@ class BuyRequestApplication(GenericWSGIApplication):
 
         logger.info('Processing Buy Post request for {0}'.format(key))
 
-        entry.set_values(req.params, entry, \
+        translate_values(req.params, entry, \
                          BuyRequestApplication.BUY_FIELDS)
-        entry.set_values(req.params, entry, \
+        translate_values(req.params, entry, \
                          BuyRequestApplication.ALT_BILLING_FIELDS)
 
         if req.params['Field225'] == 'Yes! Let me tell you more!':
