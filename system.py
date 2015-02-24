@@ -65,7 +65,9 @@ class System(Base, BaseMixin):
     {'key':'SENDWITHUS-CLOSED-WON-ID',
      'value':''},
     {'key':'SENDWITHUS-UP-FOR-RENEWAL-ID',
-     'value':''}\
+     'value':''},
+    {'key':'PALETTECLOUD-DNS-ZONE',
+     'value':'palette-software.com.'}\
     ]
 
     @classmethod

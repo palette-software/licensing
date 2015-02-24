@@ -16,6 +16,8 @@ from akiri.framework.middleware.sqlalchemy import SessionMiddleware
 from akiri.framework.sqlalchemy import create_engine, get_session
 from akiri.framework.util import required_parameters
 
+import boto.route53
+
 from stage import Stage
 from licensing import License
 from system import System
@@ -371,6 +373,21 @@ class BuyRequestApplication(GenericWSGIApplication):
 
         logger.info('Buy request success for {0}'.format(key))
 
+class CheckNameApplication(GenericWSGIApplication):
+    @required_parameters('hostname', allowed_methods=['GET'])
+    def service_GET(self, req):
+        """ Checks to see if an supplied hostname exists in Route 53
+        """
+        hostname = req.params['hostname']
+        dnszone = System.get_by_key('PALETTECLOUD-DNS-ZONE')
+        conn = boto.route53.connect_to_region('universal')
+        zone = conn.get_zone(dnszone)
+        result = zone.find_records(hostname + '.' + dnszone, 'CNAME', \
+                                  all=True)
+        exists = result is not None
+
+        return {'hostname':hostname, 'exists': exists}
+
 # pylint: disable=invalid-name
 database = DATABASE
 create_engine(database, echo=False, pool_size=20, max_overflow=30)
@@ -398,6 +415,7 @@ router.add_route(r'/api/trial_request\Z|/api/trial\Z',
 router.add_route(r'/api/trial_register\Z', TrialRegisterApplication())
 router.add_route(r'/api/trial_start\Z', TrialStartApplication())
 router.add_route(r'/api/buy_request', BuyRequestApplication())
+router.add_route(r'/api/check_name\Z', CheckNameApplication())
 
 application = SessionMiddleware(app=router)
 
