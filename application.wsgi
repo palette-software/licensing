@@ -22,7 +22,7 @@ from stage import Stage
 from licensing import License
 from system import System
 from support import Support
-from utils import str2bool
+from utils import str2bool, hostname_only
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
@@ -117,6 +117,7 @@ class TrialRequestApplication(GenericWSGIApplication):
             days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
         entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
         entry.trial = True #FIXME
+        entry.subdomain = hostname_only(entry.subdomain)
 
         session = get_session()
         session.add(entry)

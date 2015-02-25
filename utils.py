@@ -28,3 +28,14 @@ def set_verbosity(value):
 
 def str2bool(value):
     return value.lower() in ("yes", "true", "t", "1")
+
+def hostname_only(hostname):
+    """If hostname is a fqdn, returns only the hostname.
+       If hostname is passed without a domain, returns hostname unchanged."""
+
+    dot = hostname.find('.')
+    if dot != -1:
+        return hostname[:dot]
+    else:
+        return hostname
+
