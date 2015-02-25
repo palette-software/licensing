@@ -8,6 +8,7 @@ FILES := application.wsgi \
 	salesforce_api.py \
 	sendwithus_api.py \
 	slack_api.py \
+	ansible_api.py \
 	support.py \
 	stage.py \
 	system.py \

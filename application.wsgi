@@ -22,10 +22,11 @@ from stage import Stage
 from licensing import License
 from system import System
 from support import Support
+from utils import str2bool
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
-from utils import str2bool
 from slack_api import SlackAPI
+from ansible_api import AnsibleAPI
 
 DATABASE = 'postgresql://ldb:Tableau2014@localhost/licensedb'
 
@@ -91,6 +92,7 @@ class TrialRequestApplication(GenericWSGIApplication):
 
     AWS_HOSTING = 'Your AWS Account with our AMI Image'
     VMWARE_HOSTING = 'Your Data Center with our VMware Image'
+    PCLOUD_HOSTING = 'Palette Cloud'
 
     @required_parameters('Field1', 'Field2', 'Field3', 'Field6', 'Field115', \
                          'Field8', 'Field9', 'Field120')
@@ -127,9 +129,15 @@ class TrialRequestApplication(GenericWSGIApplication):
             mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-ID')
         elif entry.hosting_type == TrialRequestApplication.VMWARE_HOSTING:
             mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-VMWARE-ID')
-        else:
+        elif entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
             mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-PCLOUD-ID')
         SendwithusAPI.subscribe_user(mailid, entry)
+
+        if entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
+            session.expunge(entry)
+            AnsibleAPI.launch_instance(entry, \
+                     System.get_by_key('PALETTECLOUD-LAUNCH-SUCCESS-ID'),
+                     System.get_by_key('PALETTECLOUD-LAUNCH-FAIL-ID'))
 
         if str2bool(System.get_by_key('SEND-SLACK')) == True:
             SlackAPI.notify('Trial request from: '

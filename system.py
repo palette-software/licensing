@@ -67,7 +67,11 @@ class System(Base, BaseMixin):
     {'key':'SENDWITHUS-UP-FOR-RENEWAL-ID',
      'value':''},
     {'key':'PALETTECLOUD-DNS-ZONE',
-     'value':'palette-software.com.'}\
+     'value':'palette-software.com.'},
+    {'key':'PALETTECLOUD-LAUNCH-SUCCESS-ID',
+     'value':'dc_J5zwodmDz95K2sSUN9nDDc'},
+    {'key':'PALETTECLOUD-LAUNCH-FAIL-ID',
+     'value':'dc_HBXzkSaV9p5eWCJxC2X7YN'}
     ]
 
     @classmethod

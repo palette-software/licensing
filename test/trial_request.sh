@@ -14,7 +14,7 @@ URL=$SERVER/api/trial_request
 AWS='Your AWS Account with our AMI Image'
 VMWARE='Your Data Center with our VMware Image'
 PCLOUD='Palette Cloud'
-SUBDOMAIN='palette-software.com'
+SUBDOMAIN='test-palette'
 
 # Test new user
 #http -f POST $URL Field1='Vahid' Field2='Kowsari' Field3='vahid@kowsari.com' Field6='Test Inc.' Field115='test.com' Field8="$VMWARE" Field9=''
