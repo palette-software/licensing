@@ -25,11 +25,12 @@ class SendwithusAPI(object):
             logger.error('Error subscribing user %s to %s', data.email, mailid)
 
     @classmethod
-    def send_message(cls, mailid, from_address, to_address):
+    def send_message(cls, mailid, from_address, to_address, data):
         apikey = System.get_by_key('SENDWITHUS-APIKEY')
         api = sendwithus.api(api_key=apikey)
         response = api.send(
             email_id=mailid,
+            email_data=data,
             recipient={'address':to_address},
             sender={'address':from_address})
         if response.status_code != 200:

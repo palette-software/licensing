@@ -139,7 +139,7 @@ class TrialRequestApplication(GenericWSGIApplication):
                      System.get_by_key('PALETTECLOUD-LAUNCH-SUCCESS-ID'),
                      System.get_by_key('PALETTECLOUD-LAUNCH-FAIL-ID'))
 
-        if str2bool(System.get_by_key('SEND-SLACK')) == True:
+        if str2bool(System.get_by_key('SEND-SLACK')):
             SlackAPI.notify('Trial request from: '
                     '{0} ({1}) Org: {2} - Type: {3}'.format(\
                     entry.firstname + ' ' + entry.lastname, entry.email, \
