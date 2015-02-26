@@ -92,7 +92,7 @@ class TrialRequestApplication(GenericWSGIApplication):
 
     AWS_HOSTING = 'Your AWS Account with our AMI Image'
     VMWARE_HOSTING = 'Your Data Center with our VMware Image'
-    PCLOUD_HOSTING = 'Palette Cloud'
+    PCLOUD_HOSTING = 'Palette Online'
 
     @required_parameters('Field1', 'Field2', 'Field3', 'Field6', 'Field115', \
                          'Field8', 'Field9', 'Field120')
