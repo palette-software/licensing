@@ -264,6 +264,13 @@ class TrialStartApplication(GenericWSGIApplication):
             # subscribe the user to the trial workflow if not already
             SendwithusAPI.subscribe_user(\
                  System.get_by_key('SENDWITHUS-TRIAL-STARTED-ID'), entry)
+
+            if str2bool(System.get_by_key('SEND-SLACK')):
+                SlackAPI.notify('Trial Started: '
+                        'Key: {0}, Name: {1} ({2}), Org: {3}, Type: {4}' \
+                        .format(entry.key,
+                        entry.firstname + ' ' + entry.lastname, entry.email, \
+                        entry.organization, entry.hosting_type))
         else:
             logger.info('Licensing ping received for key {0}'.format(key))
             # just update the last contact time

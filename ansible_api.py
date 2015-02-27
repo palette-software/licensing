@@ -26,7 +26,7 @@ def run_process(entry, success_mailid, fail_mailid):
         logger.error('out %s err %s', out, err)
         SendwithusAPI.send_message(fail_mailid,
                     'licensing@palette-software.com',
-                    'diagnostics@palette-software.com', data = {
+                    'diagnostics@palette-software.com', data={
                     'subdomain':entry.subdomain,
                     'firstname':entry.firstname,
                     'lastname':entry.lastname})
