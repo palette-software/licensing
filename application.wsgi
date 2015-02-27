@@ -30,11 +30,6 @@ from ansible_api import AnsibleAPI
 
 DATABASE = 'postgresql://ldb:Tableau2014@localhost/licensedb'
 
-# FIXME: https
-LICENSE_EXPIRED = 'http://www.palette-software.com/license-expired'
-TRIAL_EXPIRED = 'http://www.palette-software.com/trial-expired'
-BUY = 'http://www.palette-software.com/buy'
-
 def time_from_today(hours=0, days=0, months=0):
     return datetime.utcnow() + \
            relativedelta(hours=hours, days=days, months=months)
@@ -422,8 +417,8 @@ router = Router()
 router.add_route(r'/hello\Z', HelloApplication())
 router.add_route(r'/license\Z', TrialStartApplication())
 router.add_route(r'/support\Z', SupportApplication())
-router.add_route(r'/trial-expired\Z', ExpiredApplication(TRIAL_EXPIRED))
-router.add_route(r'/license-expired\Z', ExpiredApplication(LICENSE_EXPIRED))
+router.add_route(r'/trial-expired\Z', BuyRequestApplication())
+router.add_route(r'/license-expired\Z', BuyRequestApplication())
 router.add_route(r'/buy\Z', BuyRequestApplication())
 
 router.add_route(r'/api/trial_request\Z|/api/trial\Z',
