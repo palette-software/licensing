@@ -382,6 +382,25 @@ class BuyRequestApplication(GenericWSGIApplication):
         SendwithusAPI.subscribe_user(\
             System.get_by_key('SENDWITHUS-CLOSED-WON-ID'), entry)
 
+        SendwithusAPI.send_message(\
+            System.get_by_key('SENDWITHUS-BUY-NOTIFICATION-ID'),
+            'licensing@palette-software.com',
+            'hello@palette-software.com',
+            {'firstname':entry.firstname,
+             'lastname':entry.lastname,
+             'email':entry.email,
+             'phone':entry.phone,
+             'org':entry.organization,
+             'hosting_type':entry.hosting_type,
+             'amount':entry.amount,
+             'billing_address_line1':entry.billing_address_line1,
+             'billing_address_line2':entry.billing_address_line2,
+             'billing_city':entry.billing_city,
+             'billing_state':entry.billing_state,
+             'billing_zip':entry.billing_zip,
+             'billing_country':entry.billing_country
+             })
+
         if str2bool(System.get_by_key('SEND-SLACK')):
             SlackAPI.notify('Buy request from: '
                     '{0} ({1}) Org: {2} - Type: {3}'.format(\
