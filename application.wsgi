@@ -382,6 +382,12 @@ class BuyRequestApplication(GenericWSGIApplication):
         SendwithusAPI.subscribe_user(\
             System.get_by_key('SENDWITHUS-CLOSED-WON-ID'), entry)
 
+        if str2bool(System.get_by_key('SEND-SLACK')):
+            SlackAPI.notify('Buy request from: '
+                    '{0} ({1}) Org: {2} - Type: {3}'.format(\
+                    entry.firstname + ' ' + entry.lastname, entry.email, \
+                    entry.organization, entry.hosting_type))
+
         logger.info('Buy request success for {0}'.format(key))
 
 class CheckNameApplication(GenericWSGIApplication):
