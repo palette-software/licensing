@@ -79,17 +79,17 @@ class HelloApplication(GenericWSGIApplication):
         return str(datetime.now())
 
 class TrialRequestApplication(GenericWSGIApplication):
-    TRIAL_FIELDS = {'Field1':'firstname', 'Field2':'lastname', \
-                    'Field3':'email', \
-                    'Field6':'organization', 'Field115':'website', \
-                    'Field8':'hosting_type', 'Field9':'subdomain', \
+    TRIAL_FIELDS = {'Field1':'firstname', 'Field2':'lastname',
+                    'Field3':'email',
+                    'Field6':'organization', 'Field115':'website',
+                    'Field8':'hosting_type', 'Field9':'subdomain',
                     'Field120':'admin_role'}
 
     AWS_HOSTING = 'Your AWS Account with our AMI Image'
     VMWARE_HOSTING = 'Your Data Center with our VMware Image'
     PCLOUD_HOSTING = 'Palette Online'
 
-    @required_parameters('Field1', 'Field2', 'Field3', 'Field6', 'Field115', \
+    @required_parameters('Field1', 'Field2', 'Field3', 'Field6', 'Field115',
                          'Field8', 'Field9', 'Field120')
     def service_POST(self, req):
         """ Handler for Try Palette Form Post
@@ -104,11 +104,11 @@ class TrialRequestApplication(GenericWSGIApplication):
               .format(org, fullname, email))
 
         entry = License()
-        translate_values(req.params, entry, \
+        translate_values(req.params, entry,
                          TrialRequestApplication.TRIAL_FIELDS)
         entry.name = org
         entry.key = str(uuid.uuid4())
-        entry.expiration_time = time_from_today(\
+        entry.expiration_time = time_from_today(
             days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
         entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
         entry.trial = True #FIXME
@@ -131,14 +131,14 @@ class TrialRequestApplication(GenericWSGIApplication):
 
         if entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
             session.expunge(entry)
-            AnsibleAPI.launch_instance(entry, \
+            AnsibleAPI.launch_instance(entry,
                      System.get_by_key('PALETTECLOUD-LAUNCH-SUCCESS-ID'),
                      System.get_by_key('PALETTECLOUD-LAUNCH-FAIL-ID'))
 
         if str2bool(System.get_by_key('SEND-SLACK')):
             SlackAPI.notify('Trial request from: '
-                    '{0} ({1}) Org: {2} - Type: {3}'.format(\
-                    entry.firstname + ' ' + entry.lastname, entry.email, \
+                    '{0} ({1}) Org: {2} - Type: {3}'.format(
+                    entry.firstname + ' ' + entry.lastname, entry.email,
                     entry.organization, entry.hosting_type))
 
         logger.info('Trial request success for {0} {1}'\
@@ -147,7 +147,7 @@ class TrialRequestApplication(GenericWSGIApplication):
         return {'license-key' :entry.key}
 
 class TrialRegisterApplication(GenericWSGIApplication):
-    @required_parameters('system-id', 'license-key', \
+    @required_parameters('system-id', 'license-key',
                          'license-type', 'license-quantity')
     def service_POST(self, req):
         """ Handle a Trial Registration
@@ -183,7 +183,7 @@ class TrialRegisterApplication(GenericWSGIApplication):
         entry.n = license_quantity
 
         entry.stageid = Stage.get_by_key('STAGE-TRIAL-REGISTERED').id
-        entry.expiration_time = time_from_today(\
+        entry.expiration_time = time_from_today(
              days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
         entry.registration_start_time = datetime.utcnow()
         entry.contact_time = datetime.utcnow()
@@ -193,7 +193,7 @@ class TrialRegisterApplication(GenericWSGIApplication):
         # update the opportunity
         SalesforceAPI.update_opportunity(entry)
         # subscribe the user to the trial workflow if not already
-        SendwithusAPI.subscribe_user(\
+        SendwithusAPI.subscribe_user(
               System.get_by_key('SENDWITHUS-TRIAL-REGISTERED-ID'), entry)
 
         logger.info('Trial Registration for key {0} success. Expiration {1}'\
@@ -204,7 +204,7 @@ class TrialRegisterApplication(GenericWSGIApplication):
                 'expiration-time': str(entry.expiration_time)}
 
 class TrialStartApplication(GenericWSGIApplication):
-    @required_parameters('system-id', 'license-key', \
+    @required_parameters('system-id', 'license-key',
                          'license-type', 'license-quantity')
     def service_POST(self, req):
         """ Handle a Trial start
@@ -257,14 +257,14 @@ class TrialStartApplication(GenericWSGIApplication):
             # update the opportunity
             SalesforceAPI.update_opportunity(entry)
             # subscribe the user to the trial workflow if not already
-            SendwithusAPI.subscribe_user(\
+            SendwithusAPI.subscribe_user(
                  System.get_by_key('SENDWITHUS-TRIAL-STARTED-ID'), entry)
 
             if str2bool(System.get_by_key('SEND-SLACK')):
                 SlackAPI.notify('Trial Started: '
                         'Key: {0}, Name: {1} ({2}), Org: {3}, Type: {4}' \
                         .format(entry.key,
-                        entry.firstname + ' ' + entry.lastname, entry.email, \
+                        entry.firstname + ' ' + entry.lastname, entry.email,
                         entry.organization, entry.hosting_type))
         else:
             logger.info('Licensing ping received for key {0}'.format(key))
@@ -282,26 +282,26 @@ class BuyRequestApplication(GenericWSGIApplication):
 
     # field mapping between request parameters and entity parameters
     # on the buy form
-    BUY_FIELDS = {'Field3':'firstname', \
-                  'Field4':'lastname', \
-                  'Field6':'organization', \
-                  'Field5':'email', \
-                  'Field21':'phone', \
-                  'Field22':'palette_type', \
-                  'Field8':'license_type', \
-                  'Field9':'license_cap', \
-                  'Field13':'billing_address_line1', \
-                  'Field14':'billing_address_line2', \
-                  'Field15':'billing_city', \
-                  'Field16':'billing_state', \
-                  'Field17':'billing_zip', \
-                  'Field18':'billing_country', \
+    BUY_FIELDS = {'Field3':'firstname',
+                  'Field4':'lastname',
+                  'Field6':'organization',
+                  'Field5':'email',
+                  'Field21':'phone',
+                  'Field22':'palette_type',
+                  'Field8':'license_type',
+                  'Field9':'license_cap',
+                  'Field13':'billing_address_line1',
+                  'Field14':'billing_address_line2',
+                  'Field15':'billing_city',
+                  'Field16':'billing_state',
+                  'Field17':'billing_zip',
+                  'Field18':'billing_country',
                   'Field330':'amount'}
 
     # additional mapping when alt_billing is set
-    ALT_BILLING_FIELDS = {'Field11':'billing_fn', \
-                          'Field12':'billing_ln', \
-                          'Field20':'billing_email', \
+    ALT_BILLING_FIELDS = {'Field11':'billing_fn',
+                          'Field12':'billing_ln',
+                          'Field20':'billing_email',
                           'Field19':'billing_phone'}
 
     NAMED_USER_TYPE = 'Named-user'
@@ -332,9 +332,9 @@ class BuyRequestApplication(GenericWSGIApplication):
 
         amount = self.calculate_price(entry.n, entry.type)
 
-        fields = {'field7':entry.key, 'field3':entry.firstname, \
-                  'field4':entry.lastname, 'field5':entry.email, \
-                  'field6':entry.organization, 'field21':entry.phone, \
+        fields = {'field7':entry.key, 'field3':entry.firstname,
+                  'field4':entry.lastname, 'field5':entry.email,
+                  'field6':entry.organization, 'field21':entry.phone,
                   'field9':entry.n, 'field330':amount}
         url_items = [kvp(k, v) for k, v in fields.iteritems()]
         url = '&'.join(url_items)
@@ -342,10 +342,10 @@ class BuyRequestApplication(GenericWSGIApplication):
         raise exc.HTTPTemporaryRedirect(location=location)
 
     @required_parameters('Field3', 'Field4', 'Field6', 'Field5', 'Field21',
-                         'Field22', 'Field8', 'Field9', \
-                         'Field13', 'Field14', 'Field15', 'Field16', \
-                         'Field17', 'Field18', 'Field225', \
-                         'Field11', 'Field12', 'Field20', 'Field19', \
+                         'Field22', 'Field8', 'Field9',
+                         'Field13', 'Field14', 'Field15', 'Field16',
+                         'Field17', 'Field18', 'Field225',
+                         'Field11', 'Field12', 'Field20', 'Field19',
                          'Field7', 'Field330')
     def service_POST(self, req):
         """ Handle a Buy Request
@@ -361,15 +361,15 @@ class BuyRequestApplication(GenericWSGIApplication):
 
         logger.info('Processing Buy Post request for {0}'.format(key))
 
-        translate_values(req.params, entry, \
+        translate_values(req.params, entry,
                          BuyRequestApplication.BUY_FIELDS)
-        translate_values(req.params, entry, \
+        translate_values(req.params, entry,
                          BuyRequestApplication.ALT_BILLING_FIELDS)
 
         if req.params['Field225'] == 'Yes! Let me tell you more!':
             entry.alt_billing = True
 
-        entry.expiration_time = time_from_today(\
+        entry.expiration_time = time_from_today(
             months=int(System.get_by_key('BUY-EXPIRATION-MONTHS')))
         entry.license_start_time = datetime.utcnow()
         entry.stageid = Stage.get_by_key('STAGE-CLOSED-WON').id
@@ -377,12 +377,13 @@ class BuyRequestApplication(GenericWSGIApplication):
         session.commit()
 
         # update the opportunity
+        SalesforceAPI.update_contact(entry)
         SalesforceAPI.update_opportunity(entry)
         # subscribe the user to the trial workflow if not already
-        SendwithusAPI.subscribe_user(\
+        SendwithusAPI.subscribe_user(
             System.get_by_key('SENDWITHUS-CLOSED-WON-ID'), entry)
 
-        SendwithusAPI.send_message(\
+        SendwithusAPI.send_message(
             System.get_by_key('SENDWITHUS-BUY-NOTIFICATION-ID'),
             'licensing@palette-software.com',
             'hello@palette-software.com',
@@ -404,7 +405,7 @@ class BuyRequestApplication(GenericWSGIApplication):
         if str2bool(System.get_by_key('SEND-SLACK')):
             SlackAPI.notify('Buy request from: '
                     '{0} ({1}) Org: {2} - Type: {3}'.format(\
-                    entry.firstname + ' ' + entry.lastname, entry.email, \
+                    entry.firstname + ' ' + entry.lastname, entry.email,
                     entry.organization, entry.hosting_type))
 
         logger.info('Buy request success for {0}'.format(key))
@@ -418,8 +419,7 @@ class CheckNameApplication(GenericWSGIApplication):
         dnszone = System.get_by_key('PALETTECLOUD-DNS-ZONE')
         conn = boto.route53.connect_to_region('universal')
         zone = conn.get_zone(dnszone)
-        result = zone.find_records(hostname + '.' + dnszone, 'CNAME', \
-                                  all=True)
+        result = zone.find_records(hostname + '.' + dnszone, 'CNAME', all=True)
         exists = result is not None
 
         return {'hostname':hostname, 'exists': exists}
