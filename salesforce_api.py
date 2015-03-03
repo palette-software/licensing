@@ -39,6 +39,7 @@ class SalesforceAPI(object):
                         password=System.get_by_key('SALESFORCE-PASSWORD'),
                         security_token=System.get_by_key('SALESFORCE-TOKEN'))
             account = salesforce.Account.create({'Name':data.organization,
+                                                 'Website':data.website,
                                                  'Phone':data.phone})
             accountid = account['id']
             logger.info('Creating Account Name %s Id %s',
@@ -57,6 +58,7 @@ class SalesforceAPI(object):
                         security_token=System.get_by_key('SALESFORCE-TOKEN'))
             salesforce.Account.update(accountid,
                                       {'Name':data.organization,
+                                       'Website':data.website,
                                        'Phone':data.phone})
             logger.info('Updating Account Name %s Id %s',
                         data.organization, accountid)

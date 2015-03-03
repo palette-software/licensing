@@ -13,7 +13,7 @@ URL=$SERVER/api/trial_request
 
 AWS='Your AWS Account with our AMI Image'
 VMWARE='Your Data Center with our VMware Image'
-PCLOUD='Palette Cloud'
+PCLOUD='Palette Online'
 SUBDOMAIN='test-palette'
 
 # Test new user
@@ -25,4 +25,4 @@ SUBDOMAIN='test-palette'
 
 # Test with existing Subdomain
 
-http -f POST $URL Field1='Vahid' Field2='Kowsari' Field3='vahid@kowsari.com' Field6='Test Inc.' Field115='test.com' Field8="$PCLOUD" Field9="$SUBDOMAIN" Field120='Other'
+http -f POST $URL Field1='Vahid' Field2='Kowsari' Field3='vahid@kowsari.com' Field6='Test Inc.' Field115='test.com' Field8="$AWS" Field9="$SUBDOMAIN" Field120='Other'
