@@ -1,0 +1,11 @@
+#!/bin/bash -f
+
+DEST_DIR=/opt/backups/db
+
+tstamp=`date +%b%d%g_%H%M`
+
+DEST_FILE=$DEST_DIR/licdb.$tstamp.gz
+
+pg_dump licensedb | gzip > $DEST_FILE
+
+exit 0
