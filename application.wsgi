@@ -28,7 +28,7 @@ from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
 from ansible_api import AnsibleAPI
 
-DATABASE = 'postgresql://ldb:Tableau2014@localhost/licensedb'
+DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
 
 def time_from_today(hours=0, days=0, months=0):
     return datetime.utcnow() + \
@@ -456,7 +456,17 @@ router.add_route(r'/api/check_name\Z', CheckNameApplication())
 application = SessionMiddleware(app=router)
 
 if __name__ == '__main__':
+    import argparse
     from akiri.framework.server import runserver
+    from paste.translogger import TransLogger
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', type=int, default=8080)
+    parser.add_argument('--pem', '--ssl-pem', default=None)
+    args = parser.parse_args()
+
+    application = TransLogger(application)
 
     router.add_redirect(r'/\Z', 'http://www.palette-software.com')
-    runserver(application, use_reloader=True, host='0.0.0.0')
+    runserver(application, use_reloader=True,
+              host='0.0.0.0', port=args.port, ssl_pem=args.pem)

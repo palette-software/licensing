@@ -56,6 +56,11 @@ Drip Campains:
    eg. SENDWITHUS-TRIAL-REQUESTED-ID with the new ID
 
 
+Running licensing locally
+-------------------------
+# add/replace this line in /etc/hosts
+127.0.0.1	localhost	licensing.palette-software.com
+
+sudo ./application.wsgi --port=443 --pem=\*
 
 
------------------------
