@@ -127,7 +127,9 @@ class SalesforceAPI(object):
         """ Create a new Salesforce Opportunity
         """
         accountid = cls.lookup_or_create_account(data)
-        contactid = cls.lookup_or_create_contact(data, accountid)
+
+        # FIXME: do we want to return this?
+        # contactid = cls.lookup_or_create_contact(data, accountid)
 
         name = data.organization + ' ' + \
                data.firstname + ' ' + data.lastname + ' ' +\
