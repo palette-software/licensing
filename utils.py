@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from urlparse import urlparse
 import sys
 
 class State(object):
@@ -39,3 +40,7 @@ def hostname_only(hostname):
     else:
         return hostname
 
+def strip_scheme(url):
+    parsed = urlparse(url)
+    scheme = "%s://" % parsed.scheme
+    return parsed.geturl().replace(scheme, '', 1)

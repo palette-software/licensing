@@ -19,6 +19,7 @@ class SendwithusAPI(object):
                           'lastname':data.lastname,
                           'organization':data.organization,
                           'hosting_type':data.hosting_type,
+                          'promo_code':data.promo_code,
                           'subdomain':data.subdomain},
             sender={'address': 'hello@palette-software.com'})
         if response.status_code != 200:

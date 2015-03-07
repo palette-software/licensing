@@ -147,6 +147,7 @@ class SalesforceAPI(object):
                  'Hosting_Type__c':data.hosting_type,
                  'AWS_Region__c':data.aws_zone,
                  'Palette_Cloud_subdomain__c':data.subdomain,
+                 'Promo_Code__c':data.promo_code
              })
         logger.info('Creating new opportunity with Contact ' + \
                     'Name %s %s Account Id %s Contact Id %s',
@@ -177,5 +178,6 @@ class SalesforceAPI(object):
                  'System_ID__c':data.system_id,
                  'Hosting_Type__c':data.hosting_type,
                  'AWS_Region__c':data.aws_zone,
-                 'Palette_Cloud_subdomain__c':data.subdomain
+                 'Palette_Cloud_subdomain__c':data.subdomain,
+                 'Promo_Code__c':data.promo_code
              })

@@ -22,14 +22,13 @@ from stage import Stage
 from licensing import License
 from system import System
 from support import Support
-from utils import str2bool, hostname_only
+from utils import str2bool, hostname_only, strip_scheme
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
 from ansible_api import AnsibleAPI
 
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
-#DATABASE = 'postgresql://palette:palpass@localhost/ldb'
 
 def time_from_today(hours=0, days=0, months=0):
     return datetime.utcnow() + \
@@ -85,7 +84,6 @@ class TrialRequestApplication(GenericWSGIApplication):
                     'Field3':'email',
                     'Field115':'website',
                     'Field128':'hosting_type',
-                    'Field138':'subdomain',
                     'Field130':'region',
                     'Field131':'promo_code',
                     'Field126':'admin_role'}
@@ -100,7 +98,6 @@ class TrialRequestApplication(GenericWSGIApplication):
                          'Field115',
                          'Field128',
                          'Field130',
-                         'Field138',
                          'Field131',
                          'Field126')
     def service_POST(self, req):
@@ -125,8 +122,9 @@ class TrialRequestApplication(GenericWSGIApplication):
             days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
         entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
         entry.trial = True #FIXME
-        entry.subdomain = hostname_only(entry.subdomain)
-        entry.organization = org
+        entry.organization = hostname_only(strip_scheme(entry.website))
+        entry.subdomain = entry.organization
+        entry.name = entry.organization
 
         session = get_session()
         session.add(entry)
