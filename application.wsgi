@@ -108,7 +108,6 @@ class TrialRequestApplication(GenericWSGIApplication):
         fullname = firstname + " " + lastname
         email = req.params['Field3']
         website = req.params['Field115']
-        org = website
 
         logger.info('New trial request for {0} {1} {2}'\
               .format(website, fullname, email))
