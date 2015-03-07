@@ -127,9 +127,7 @@ class SalesforceAPI(object):
         """ Create a new Salesforce Opportunity
         """
         accountid = cls.lookup_or_create_account(data)
-
-        # FIXME: do we want to return this?
-        # contactid = cls.lookup_or_create_contact(data, accountid)
+        contactid = cls.lookup_or_create_contact(data, accountid)
 
         name = data.organization + ' ' + \
                data.firstname + ' ' + data.lastname + ' ' +\
@@ -151,8 +149,8 @@ class SalesforceAPI(object):
                  'Palette_Cloud_subdomain__c':data.subdomain,
              })
         logger.info('Creating new opportunity with Contact ' + \
-                    'Name %s %s Account Id %s',
-                    data.firstname, data.lastname, accountid)
+                    'Name %s %s Account Id %s Contact Id %s',
+                    data.firstname, data.lastname, accountid, contactid)
 
     @classmethod
     def update_opportunity(cls, data):

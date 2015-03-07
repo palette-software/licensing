@@ -72,7 +72,12 @@ def main():
         print >> sys.stderr, 'Invalid region specified for IAM.'
         return 1
 
-    res = iam.create_user(iam_name)
+    try:
+        res = iam.create_user(iam_name)
+    except boto.exception.BotoServerError as e:
+        print >> sys.stderr, 'IAM user already exists'
+        res = iam.get_user(iam_name)
+
     user = res.user
 
     data = {'name': iam_name, 'title': iam_name.title(), 'user_arn': user.arn}
@@ -84,7 +89,7 @@ def main():
         return 1
 
     # Sometimes it takes awhile for the user ARN to settle ?!
-    time.sleep(1)
+    time.sleep(5)
 
     bucket = s3.create_bucket(bucket_name)
     try:

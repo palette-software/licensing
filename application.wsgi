@@ -29,6 +29,7 @@ from slack_api import SlackAPI
 from ansible_api import AnsibleAPI
 
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
+#DATABASE = 'postgresql://palette:palpass@localhost/ldb'
 
 def time_from_today(hours=0, days=0, months=0):
     return datetime.utcnow() + \
@@ -79,40 +80,53 @@ class HelloApplication(GenericWSGIApplication):
         return str(datetime.now())
 
 class TrialRequestApplication(GenericWSGIApplication):
-    TRIAL_FIELDS = {'Field1':'firstname', 'Field2':'lastname',
+    TRIAL_FIELDS = {'Field133':'firstname',
+                    'Field134':'lastname',
                     'Field3':'email',
-                    'Field6':'organization', 'Field115':'website',
-                    'Field8':'hosting_type', 'Field9':'subdomain',
-                    'Field120':'admin_role'}
+                    'Field115':'website',
+                    'Field128':'hosting_type',
+                    'Field138':'subdomain',
+                    'Field130':'region',
+                    'Field131':'promo_code',
+                    'Field126':'admin_role'}
 
     AWS_HOSTING = 'Your AWS Account with our AMI Image'
     VMWARE_HOSTING = 'Your Data Center with our VMware Image'
-    PCLOUD_HOSTING = 'Palette Online'
+    PCLOUD_HOSTING = 'Palette Online in our Data Center'
 
-    @required_parameters('Field1', 'Field2', 'Field3', 'Field6', 'Field115',
-                         'Field8', 'Field9', 'Field120')
+    @required_parameters('Field133',
+                         'Field134',
+                         'Field3',
+                         'Field115',
+                         'Field128',
+                         'Field130',
+                         'Field138',
+                         'Field131',
+                         'Field126')
     def service_POST(self, req):
         """ Handler for Try Palette Form Post
         """
-        firstname = req.params['Field1']
-        lastname = req.params['Field2']
+        firstname = req.params['Field133']
+        lastname = req.params['Field134']
         fullname = firstname + " " + lastname
         email = req.params['Field3']
-        org = req.params['Field6']
+        website = req.params['Field115']
+        org = website
 
         logger.info('New trial request for {0} {1} {2}'\
-              .format(org, fullname, email))
+              .format(website, fullname, email))
 
         entry = License()
         translate_values(req.params, entry,
                          TrialRequestApplication.TRIAL_FIELDS)
-        entry.name = org
+        entry.name = website
         entry.key = str(uuid.uuid4())
         entry.expiration_time = time_from_today(
             days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
         entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
         entry.trial = True #FIXME
         entry.subdomain = hostname_only(entry.subdomain)
+        entry.organization = org
 
         session = get_session()
         session.add(entry)
@@ -127,6 +141,8 @@ class TrialRequestApplication(GenericWSGIApplication):
             mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-VMWARE-ID')
         elif entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
             mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-PCLOUD-ID')
+        else:
+            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-ID')
         SendwithusAPI.subscribe_user(mailid, entry)
 
         if entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:

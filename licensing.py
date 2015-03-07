@@ -62,6 +62,7 @@ class License(Base):
     website = Column(String, nullable=False)
     phone = Column(String)
     admin_role = Column(String)
+    promo_code = Column(String)
 
     # AWS, VMWare or Palette Cloud
     hosting_type = Column(String)
