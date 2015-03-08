@@ -7,13 +7,18 @@ from sendwithus_api import SendwithusAPI
 logger = logging.getLogger('licensing')
 
 ANSIBLE_PATH = '/opt/ansible'
+REGION='us-east-1'
+ZONE='palette-software.net'
 
 def run_process(entry, success_mailid, fail_mailid):
     logger.info('Launching an instance %s', entry.subdomain)
 
     path = ANSIBLE_PATH + '/palette_instance.sh'
-    cmd = 'cd {0};/usr/bin/sudo {1} {2}'.format(\
-            ANSIBLE_PATH, path, entry.subdomain)
+    cmd = 'cd {0};/usr/bin/sudo {1} {2} {3} {4}'.format(\
+            ANSIBLE_PATH,
+            path,
+            entry.subdomain,
+            REGION, ZONE)
     logger.info('Running %s', cmd)
 
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
