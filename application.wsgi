@@ -297,7 +297,7 @@ class BuyRequestApplication(GenericWSGIApplication):
     # on the buy form
     BUY_FIELDS = {'Field3':'firstname',
                   'Field4':'lastname',
-                  'Field6':'organization',
+                  'Field6':'website',
                   'Field5':'email',
                   'Field21':'phone',
                   'Field22':'palette_type',
@@ -347,19 +347,18 @@ class BuyRequestApplication(GenericWSGIApplication):
 
         fields = {'field7':entry.key, 'field3':entry.firstname,
                   'field4':entry.lastname, 'field5':entry.email,
-                  'field6':entry.organization, 'field21':entry.phone,
-                  'field9':entry.n, 'field330':amount}
+                  'field6':entry.website, 'field21':entry.phone}
         url_items = [kvp(k, v) for k, v in fields.iteritems()]
         url = '&'.join(url_items)
         location = '{0}/{1}'.format(System.get_by_key('BUY-URL'), url)
         raise exc.HTTPTemporaryRedirect(location=location)
 
     @required_parameters('Field3', 'Field4', 'Field6', 'Field5', 'Field21',
-                         'Field22', 'Field8', 'Field9',
+                         'Field22',
                          'Field13', 'Field14', 'Field15', 'Field16',
                          'Field17', 'Field18', 'Field225',
                          'Field11', 'Field12', 'Field20', 'Field19',
-                         'Field7', 'Field330')
+                         'Field7')
     def service_POST(self, req):
         """ Handle a Buy Request
         """
@@ -419,7 +418,7 @@ class BuyRequestApplication(GenericWSGIApplication):
             SlackAPI.notify('Buy request from: '
                     '{0} ({1}) Org: {2} - Type: {3}'.format(\
                     entry.firstname + ' ' + entry.lastname, entry.email,
-                    entry.organization, entry.hosting_type))
+                    entry.website, entry.hosting_type))
 
         logger.info('Buy request success for {0}'.format(key))
 
