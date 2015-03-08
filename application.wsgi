@@ -124,6 +124,7 @@ class TrialRequestApplication(GenericWSGIApplication):
         entry.organization = hostname_only(strip_scheme(entry.website))
         entry.subdomain = entry.organization
         entry.name = entry.organization
+        entry.website = strip_scheme(entry.website)
 
         session = get_session()
         session.add(entry)
