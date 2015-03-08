@@ -7,8 +7,8 @@ from sendwithus_api import SendwithusAPI
 logger = logging.getLogger('licensing')
 
 ANSIBLE_PATH = '/opt/ansible'
-REGION='us-east-1'
-ZONE='palette-software.net'
+REGION = 'us-east-1'
+ZONE = 'palette-software.net'
 
 def run_process(entry, success_mailid, fail_mailid):
     logger.info('Launching an instance %s', entry.subdomain)

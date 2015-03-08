@@ -344,8 +344,6 @@ class BuyRequestApplication(GenericWSGIApplication):
 
         logger.info('Processing Buy get request info for {0}'.format(key))
 
-        amount = self.calculate_price(entry.n, entry.type)
-
         fields = {'field7':entry.key, 'field3':entry.firstname,
                   'field4':entry.lastname, 'field5':entry.email,
                   'field6':entry.website, 'field21':entry.phone}
