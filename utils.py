@@ -28,7 +28,10 @@ def set_verbosity(value):
     STATE.verbose = value
 
 def str2bool(value):
-    return value.lower() in ("yes", "true", "t", "1")
+    if value is None:
+        return False
+    else:
+        return value.lower() in ("yes", "true", "t", "1")
 
 def hostname_only(hostname):
     """If hostname is a fqdn, returns only the hostname.
@@ -39,6 +42,15 @@ def hostname_only(hostname):
         return hostname[:dot]
     else:
         return hostname
+
+def server_name(hostname):
+    """ Returns the server part which is usually the next field after the
+        top level domain part in the URL"""
+    parts = hostname.split('.')
+    subdomain = parts[-2]
+    if subdomain in ['com', 'co', 'org', 'net']:
+        subdomain = parts[-3]
+    return subdomain
 
 def strip_scheme(url):
     parsed = urlparse(url)

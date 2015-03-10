@@ -1,4 +1,10 @@
 import requests
+import logging
+
+from system import System
+from utils import str2bool
+
+logger = logging.getLogger('licensing')
 
 URL = 'https://palette.slack.com/services/hooks/slackbot'
 TOKEN = '6jZnrmPb4whXzzv7ICYcdAzz'
@@ -9,4 +15,7 @@ class SlackAPI(object):
 
     @classmethod
     def notify(cls, message):
-        requests.post(SlackAPI.SLACK_URL, data=message)
+        if str2bool(System.get_by_key('SEND-SLACK')):
+            requests.post(SlackAPI.SLACK_URL, data=message)
+        else:
+            logger.info('Not sending slack message')

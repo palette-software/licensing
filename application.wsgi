@@ -22,13 +22,14 @@ from stage import Stage
 from licensing import License
 from system import System
 from support import Support
-from utils import str2bool, hostname_only, strip_scheme
+from utils import strip_scheme, server_name
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
 from ansible_api import AnsibleAPI
 
-DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
+#DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
+DATABASE = 'postgresql://palette:palpass@localhost/ldb'
 
 def time_from_today(hours=0, days=0, months=0):
     return datetime.utcnow() + \
@@ -78,13 +79,32 @@ class HelloApplication(GenericWSGIApplication):
         # This could be tracked :).
         return str(datetime.now())
 
+
+def get_unique_name(name):
+    """ Lookup and get a unique name for the server based on
+        what is already in the database
+    """
+    count = 1
+    to_try = name
+
+    while True:
+        result = License.get_by_name(to_try)
+        if result is not None:
+            # name exists try the next numbered one$
+            to_try = '{0}-{1}'.format(name, count)
+            count = count + 1
+        else:
+            break
+
+    return to_try
+
 class TrialRequestApplication(GenericWSGIApplication):
     TRIAL_FIELDS = {'Field133':'firstname',
                     'Field134':'lastname',
                     'Field3':'email',
                     'Field115':'website',
                     'Field128':'hosting_type',
-                    'Field130':'region',
+                    'Field130':'aws_zone',
                     'Field131':'promo_code',
                     'Field126':'admin_role'}
 
@@ -121,9 +141,9 @@ class TrialRequestApplication(GenericWSGIApplication):
             days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
         entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
         entry.trial = True #FIXME
-        entry.organization = hostname_only(strip_scheme(entry.website))
-        entry.subdomain = entry.organization
-        entry.name = entry.organization
+        entry.organization = server_name(strip_scheme(entry.website))
+        entry.subdomain = get_unique_name(entry.organization)
+        entry.name = entry.subdomain
         entry.website = strip_scheme(entry.website)
 
         session = get_session()
@@ -140,20 +160,18 @@ class TrialRequestApplication(GenericWSGIApplication):
         elif entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
             mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-PCLOUD-ID')
         else:
-            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-ID')
+            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-DONTKNOW-ID')
         SendwithusAPI.subscribe_user(mailid, entry)
 
         if entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
-            session.expunge(entry)
             AnsibleAPI.launch_instance(entry,
                      System.get_by_key('PALETTECLOUD-LAUNCH-SUCCESS-ID'),
                      System.get_by_key('PALETTECLOUD-LAUNCH-FAIL-ID'))
 
-        if str2bool(System.get_by_key('SEND-SLACK')):
-            SlackAPI.notify('Trial request from: '
-                    '{0} ({1}) Org: {2} - Type: {3}'.format(
-                    entry.firstname + ' ' + entry.lastname, entry.email,
-                    entry.organization, entry.hosting_type))
+        SlackAPI.notify('Trial request from: '
+                '{0} ({1}) Org: {2} - Type: {3}'.format(
+                entry.firstname + ' ' + entry.lastname, entry.email,
+                entry.organization, entry.hosting_type))
 
         logger.info('Trial request success for {0} {1}'\
                     .format(entry.email, entry.key))
@@ -274,12 +292,11 @@ class TrialStartApplication(GenericWSGIApplication):
             SendwithusAPI.subscribe_user(
                  System.get_by_key('SENDWITHUS-TRIAL-STARTED-ID'), entry)
 
-            if str2bool(System.get_by_key('SEND-SLACK')):
-                SlackAPI.notify('Trial Started: '
-                        'Key: {0}, Name: {1} ({2}), Org: {3}, Type: {4}' \
-                        .format(entry.key,
-                        entry.firstname + ' ' + entry.lastname, entry.email,
-                        entry.organization, entry.hosting_type))
+            SlackAPI.notify('Trial Started: '
+                    'Key: {0}, Name: {1} ({2}), Org: {3}, Type: {4}' \
+                    .format(entry.key,
+                    entry.firstname + ' ' + entry.lastname, entry.email,
+                    entry.organization, entry.hosting_type))
         else:
             logger.info('Licensing ping received for key {0}'.format(key))
             # just update the last contact time
@@ -413,11 +430,10 @@ class BuyRequestApplication(GenericWSGIApplication):
              'billing_country':entry.billing_country
              })
 
-        if str2bool(System.get_by_key('SEND-SLACK')):
-            SlackAPI.notify('Buy request from: '
-                    '{0} ({1}) Org: {2} - Type: {3}'.format(\
-                    entry.firstname + ' ' + entry.lastname, entry.email,
-                    entry.website, entry.hosting_type))
+        SlackAPI.notify('Buy request from: '
+                '{0} ({1}) Org: {2} - Type: {3}'.format(\
+                entry.firstname + ' ' + entry.lastname, entry.email,
+                entry.website, entry.hosting_type))
 
         logger.info('Buy request success for {0}'.format(key))
 
