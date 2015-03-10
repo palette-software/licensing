@@ -16,8 +16,6 @@ from akiri.framework.middleware.sqlalchemy import SessionMiddleware
 from akiri.framework.sqlalchemy import create_engine, get_session
 from akiri.framework.util import required_parameters
 
-import boto.route53
-
 from stage import Stage
 from licensing import License
 from system import System
@@ -27,6 +25,7 @@ from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
 from ansible_api import AnsibleAPI
+from boto_api import BotoAPI
 
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
 
@@ -97,6 +96,38 @@ def get_unique_name(name):
 
     return to_try
 
+def populate_email_data(entry):
+    """ creates a dict that contains the fileds to put passed to trial emails
+    """
+    email_data = {'license':entry.key,
+                  'firstname':entry.firstname,
+                  'lastname':entry.lastname,
+                  'organization':entry.organization,
+                  'hosting_type':entry.hosting_type,
+                  'promo_code':entry.promo_code,
+                  'subdomain':entry.subdomain,
+                  'access_key':entry.access_key,
+                  'secret_key':entry.secret_key}
+    return email_data
+
+def populate_buy_email_data(entry):
+    """ creates a dict that contains the fileds to put passed to buy emails
+    """
+    email_data = {'firstname':entry.firstname,
+                  'lastname':entry.lastname,
+                  'email':entry.email,
+                  'phone':entry.phone,
+                  'org':entry.organization,
+                  'hosting_type':entry.hosting_type,
+                  'amount':entry.amount,
+                  'billing_address_line1':entry.billing_address_line1,
+                  'billing_address_line2':entry.billing_address_line2,
+                  'billing_city':entry.billing_city,
+                  'billing_state':entry.billing_state,
+                  'billing_zip':entry.billing_zip,
+                  'billing_country':entry.billing_country}
+    return email_data
+
 class TrialRequestApplication(GenericWSGIApplication):
     TRIAL_FIELDS = {'Field133':'firstname',
                     'Field134':'lastname',
@@ -144,6 +175,8 @@ class TrialRequestApplication(GenericWSGIApplication):
         entry.subdomain = get_unique_name(entry.organization)
         entry.name = entry.subdomain
         entry.website = strip_scheme(entry.website)
+        entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
+        entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
 
         session = get_session()
         session.add(entry)
@@ -160,7 +193,10 @@ class TrialRequestApplication(GenericWSGIApplication):
             mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-PCLOUD-ID')
         else:
             mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-DONTKNOW-ID')
-        SendwithusAPI.subscribe_user(mailid, entry)
+        SendwithusAPI.subscribe_user(mailid,
+                                     'hello@palette-software.com',
+                                     entry.email,
+                                     populate_email_data(entry))
 
         if entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
             AnsibleAPI.launch_instance(entry,
@@ -225,7 +261,10 @@ class TrialRegisterApplication(GenericWSGIApplication):
         SalesforceAPI.update_opportunity(entry)
         # subscribe the user to the trial workflow if not already
         SendwithusAPI.subscribe_user(
-              System.get_by_key('SENDWITHUS-TRIAL-REGISTERED-ID'), entry)
+                        System.get_by_key('SENDWITHUS-TRIAL-REGISTERED-ID'),
+                        'hello@palette-software.com',
+                        entry.email,
+                        populate_email_data(entry))
 
         logger.info('Trial Registration for key {0} success. Expiration {1}'\
               .format(key, entry.expiration_time))
@@ -289,7 +328,10 @@ class TrialStartApplication(GenericWSGIApplication):
             SalesforceAPI.update_opportunity(entry)
             # subscribe the user to the trial workflow if not already
             SendwithusAPI.subscribe_user(
-                 System.get_by_key('SENDWITHUS-TRIAL-STARTED-ID'), entry)
+                         System.get_by_key('SENDWITHUS-TRIAL-STARTED-ID'),
+                         'hello@palette-software.com',
+                         entry.email,
+                         populate_email_data(entry))
 
             SlackAPI.notify('Trial Started: '
                     'Key: {0}, Name: {1} ({2}), Org: {3}, Type: {4}' \
@@ -408,26 +450,16 @@ class BuyRequestApplication(GenericWSGIApplication):
         SalesforceAPI.update_opportunity(entry)
         # subscribe the user to the trial workflow if not already
         SendwithusAPI.subscribe_user(
-            System.get_by_key('SENDWITHUS-CLOSED-WON-ID'), entry)
+                      System.get_by_key('SENDWITHUS-CLOSED-WON-ID'),
+                      'hello@palette-software.com',
+                      entry.email,
+                      populate_email_data(entry))
 
         SendwithusAPI.send_message(
-            System.get_by_key('SENDWITHUS-BUY-NOTIFICATION-ID'),
-            'licensing@palette-software.com',
-            'hello@palette-software.com',
-            {'firstname':entry.firstname,
-             'lastname':entry.lastname,
-             'email':entry.email,
-             'phone':entry.phone,
-             'org':entry.organization,
-             'hosting_type':entry.hosting_type,
-             'amount':entry.amount,
-             'billing_address_line1':entry.billing_address_line1,
-             'billing_address_line2':entry.billing_address_line2,
-             'billing_city':entry.billing_city,
-             'billing_state':entry.billing_state,
-             'billing_zip':entry.billing_zip,
-             'billing_country':entry.billing_country
-             })
+                      System.get_by_key('SENDWITHUS-BUY-NOTIFICATION-ID'),
+                      'licensing@palette-software.com',
+                      'hello@palette-software.com',
+                      populate_buy_email_data(entry))
 
         SlackAPI.notify('Buy request from: '
                 '{0} ({1}) Org: {2} - Type: {3}'.format(\
@@ -435,20 +467,6 @@ class BuyRequestApplication(GenericWSGIApplication):
                 entry.website, entry.hosting_type))
 
         logger.info('Buy request success for {0}'.format(key))
-
-class CheckNameApplication(GenericWSGIApplication):
-    @required_parameters('hostname', allowed_methods=['GET'])
-    def service_GET(self, req):
-        """ Checks to see if an supplied hostname exists in Route 53
-        """
-        hostname = req.params['hostname']
-        dnszone = System.get_by_key('PALETTECLOUD-DNS-ZONE')
-        conn = boto.route53.connect_to_region('universal')
-        zone = conn.get_zone(dnszone)
-        result = zone.find_records(hostname + '.' + dnszone, 'CNAME', all=True)
-        exists = result is not None
-
-        return {'hostname':hostname, 'exists': exists}
 
 # pylint: disable=invalid-name
 database = DATABASE
@@ -477,7 +495,6 @@ router.add_route(r'/api/trial_request\Z|/api/trial\Z',
 router.add_route(r'/api/trial_register\Z', TrialRegisterApplication())
 router.add_route(r'/api/trial_start\Z', TrialStartApplication())
 router.add_route(r'/api/buy_request', BuyRequestApplication())
-router.add_route(r'/api/check_name\Z', CheckNameApplication())
 
 application = SessionMiddleware(app=router)
 

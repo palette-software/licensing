@@ -38,7 +38,7 @@ class SalesforceAPI(object):
                         username=System.get_by_key('SALESFORCE-USERNAME'),
                         password=System.get_by_key('SALESFORCE-PASSWORD'),
                         security_token=System.get_by_key('SALESFORCE-TOKEN'))
-            account = salesforce.Account.create({'Name':data.organization,
+            account = salesforce.Account.create({'Name':data.website,
                                                  'Website':data.website,
                                                  'Phone':data.phone})
             accountid = account['id']
@@ -57,7 +57,7 @@ class SalesforceAPI(object):
                         password=System.get_by_key('SALESFORCE-PASSWORD'),
                         security_token=System.get_by_key('SALESFORCE-TOKEN'))
             salesforce.Account.update(accountid,
-                                      {'Name':data.organization,
+                                      {'Name':data.website,
                                        'Website':data.website,
                                        'Phone':data.phone})
             logger.info('Updating Account Name %s Id %s',
@@ -129,9 +129,10 @@ class SalesforceAPI(object):
         accountid = cls.lookup_or_create_account(data)
         contactid = cls.lookup_or_create_contact(data, accountid)
 
+        now = datetime.utcnow()
         name = data.organization + ' ' + \
                data.firstname + ' ' + data.lastname + ' ' +\
-               datetime.utcnow().strftime('%x %X')
+               now.strftime('%x %X')
 
         salesforce = Salesforce(
                         username=System.get_by_key('SALESFORCE-USERNAME'),
@@ -147,8 +148,10 @@ class SalesforceAPI(object):
                  'Hosting_Type__c':data.hosting_type,
                  'AWS_Region__c':data.aws_zone,
                  'Palette_Cloud_subdomain__c':data.subdomain,
-                 'Promo_Code__c':data.promo_code
-             })
+                 'Promo_Code__c':data.promo_code,
+                 'Trial_Request_Date_Time__c':now.isoformat(),
+                 'Access_Key__c':data.access_key,
+                 'Secret_Access_Key__c':data.secret_key})
         logger.info('Creating new opportunity with Contact ' + \
                     'Name %s %s Account Id %s Contact Id %s',
                     data.firstname, data.lastname, accountid, contactid)
@@ -179,5 +182,8 @@ class SalesforceAPI(object):
                  'Hosting_Type__c':data.hosting_type,
                  'AWS_Region__c':data.aws_zone,
                  'Palette_Cloud_subdomain__c':data.subdomain,
-                 'Promo_Code__c':data.promo_code
+                 'Promo_Code__c':data.promo_code,
+            'Trial_Request_Date_Time__c':data.registration_start_time,
+            'Trial_Registered_Date_Time__c':data.trial_start_time.isoformat(),
+            'License_Start_Date_Time__c':data.license_start_time.isoformat()
              })

@@ -86,6 +86,9 @@ class License(Base):
 
     amount = Column(Numeric(8, 2))
 
+    access_key = Column(String)
+    secret_key = Column(String)
+
     creation_time = Column(DateTime, server_default=func.now())
     last_update = Column(DateTime, default=datetime.utcnow(),
                                     onupdate=datetime.utcnow())

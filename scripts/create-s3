@@ -4,6 +4,7 @@ import sys
 import time
 import argparse
 import boto.iam
+import json
 
 # There can't be a newline or other character before the first brace.
 POLICY = """{{
@@ -30,7 +31,7 @@ POLICY = """{{
 				"s3:GetBucketVersioning",
 				"s3:GetBucketWebsite"
 			],
-			"Resource": "arn:aws:s3:::production-{name}"
+			"Resource": "arn:aws:s3:::{name}"
 		}},
 		{{
 			"Sid": "{title}BucketObjectsACL",
@@ -52,7 +53,7 @@ POLICY = """{{
 				"s3:PutObject",
 				"s3:GetObjectVersionAcl"
 			],
-			"Resource": "arn:aws:s3:::production-{name}/*"
+			"Resource": "arn:aws:s3:::{name}/*"
 		}}
 	]
 }}
@@ -64,7 +65,7 @@ def main():
     parser.add_argument('--region', default='us-east-1')
     args = parser.parse_args()
 
-    iam_name = args.name
+    iam_name = 'production-' + args.name
     bucket_name = 'production-' + args.name
 
     iam = boto.iam.connect_to_region('universal')
@@ -79,6 +80,10 @@ def main():
         res = iam.get_user(iam_name)
 
     user = res.user
+
+    keys = iam.create_access_key(iam_name)
+    result = {'access_key':keys.access_key_id,
+              'secret_key':keys.secret_access_key}
 
     data = {'name': iam_name, 'title': iam_name.title(), 'user_arn': user.arn}
     policy = POLICY.format(**data)
@@ -99,6 +104,7 @@ def main():
         time.sleep(3)
         bucket.set_policy(policy)
 
+    print >> sys.stdout , json.dumps(result)
     return 0
 
 if __name__ == '__main__':

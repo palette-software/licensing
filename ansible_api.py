@@ -23,7 +23,7 @@ def run_process(entry, success_mailid, fail_mailid):
             ANSIBLE_PATH,
             path,
             entry.subdomain,
-            REGION, zone, entry.opportunity, 'Palette Online')
+            REGION, zone, entry.name, 'Palette Online')
     logger.info('Running %s', cmd)
 
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
@@ -51,7 +51,10 @@ def run_process(entry, success_mailid, fail_mailid):
     else:
         logger.info('Succesfully launched instance {0}'.format(entry.subdomain))
         logger.error('out %s err %s', out, err)
-        SendwithusAPI.subscribe_user(success_mailid, entry)
+        SendwithusAPI.subscribe_user(success_mailid,
+                    'hello@palette-software.com',
+                    entry.email,
+                    entry)
 
 class AnsibleAPI(object):
     @classmethod
