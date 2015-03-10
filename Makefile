@@ -9,6 +9,7 @@ FILES := application.wsgi \
 	sendwithus_api.py \
 	slack_api.py \
 	ansible_api.py \
+	boto_api.py \
 	support.py \
 	stage.py \
 	system.py \

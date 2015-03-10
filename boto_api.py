@@ -61,6 +61,8 @@ POLICY = """{{
 }}
 """
 
+BUCKET_PREFIX='palette-production-'
+
 class BotoAPI(object):
     @classmethod
     def get_region_by_name(cls, name):
@@ -90,9 +92,8 @@ class BotoAPI(object):
         """ Creates a user and then gets access keys and then creates a bucket
             and bucket policy on S3
         """
-
-        iam_name = 'production-' + entry.name
-        bucket_name = 'production-' + entry.name
+        iam_name = BUCKET_PREFIX + entry.name
+        bucket_name = BUCKET_PREFIX + entry.name
 
         logger.info('Boto: Creating user %s', iam_name)
         iam = boto.iam.connect_to_region('universal')

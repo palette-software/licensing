@@ -46,38 +46,6 @@ def translate_values(source, entry, fields):
         if value is not None:
             setattr(entry, dest_attr, value)
 
-class SupportApplication(GenericWSGIApplication):
-
-    def service_GET(self, req):
-        if 'key' not in req.params:
-            # Return 404 instead of bad request to 'hide' this URL.
-            return exc.HTTPNotFound()
-        entry = Support.find_active_port_by_key(req.params['key'])
-        if entry is None:
-            raise exc.HTTPNotFound()
-        return {'port': entry.port}
-
-
-class ExpiredApplication(GenericWSGIApplication):
-
-    def __init__(self, base_url):
-        super(ExpiredApplication, self).__init__()
-        self.base_url = base_url
-
-    def service_GET(self, req):
-        # pylint: disable=unused-argument
-        # FIXME: take 'key' and resolve.
-        raise exc.HTTPTemporaryRedirect(location=self.base_url)
-
-
-class HelloApplication(GenericWSGIApplication):
-
-    def service_GET(self, req):
-        # pylint: disable=unused-argument
-        # This could be tracked :).
-        return str(datetime.now())
-
-
 def get_unique_name(name):
     """ Lookup and get a unique name for the server based on
         what is already in the database
@@ -128,6 +96,37 @@ def populate_buy_email_data(entry):
                   'billing_country':entry.billing_country}
     return email_data
 
+class SupportApplication(GenericWSGIApplication):
+
+    def service_GET(self, req):
+        if 'key' not in req.params:
+            # Return 404 instead of bad request to 'hide' this URL.
+            return exc.HTTPNotFound()
+        entry = Support.find_active_port_by_key(req.params['key'])
+        if entry is None:
+            raise exc.HTTPNotFound()
+        return {'port': entry.port}
+
+
+class ExpiredApplication(GenericWSGIApplication):
+
+    def __init__(self, base_url):
+        super(ExpiredApplication, self).__init__()
+        self.base_url = base_url
+
+    def service_GET(self, req):
+        # pylint: disable=unused-argument
+        # FIXME: take 'key' and resolve.
+        raise exc.HTTPTemporaryRedirect(location=self.base_url)
+
+
+class HelloApplication(GenericWSGIApplication):
+
+    def service_GET(self, req):
+        # pylint: disable=unused-argument
+        # This could be tracked :).
+        return str(datetime.now())
+
 class TrialRequestApplication(GenericWSGIApplication):
     TRIAL_FIELDS = {'Field133':'firstname',
                     'Field134':'lastname',
@@ -157,7 +156,7 @@ class TrialRequestApplication(GenericWSGIApplication):
         lastname = req.params['Field134']
         fullname = firstname + " " + lastname
         email = req.params['Field3']
-        website = req.params['Field115']
+        website = strip_scheme(req.params['Field115']).lower()
 
         logger.info('New trial request for {0} {1} {2}'\
               .format(website, fullname, email))
@@ -165,16 +164,18 @@ class TrialRequestApplication(GenericWSGIApplication):
         entry = License()
         translate_values(req.params, entry,
                          TrialRequestApplication.TRIAL_FIELDS)
-        entry.name = website
         entry.key = str(uuid.uuid4())
         entry.expiration_time = time_from_today(
             days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
         entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
         entry.trial = True #FIXME
-        entry.organization = server_name(strip_scheme(entry.website))
+        entry.website = website
+        entry.organization = server_name(entry.website)
         entry.subdomain = get_unique_name(entry.organization)
         entry.name = entry.subdomain
-        entry.website = strip_scheme(entry.website)
+
+        print entry.name, entry.organization, entry.subdomain
+
         entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
         entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
 
