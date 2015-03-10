@@ -28,8 +28,7 @@ from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
 from ansible_api import AnsibleAPI
 
-#DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
-DATABASE = 'postgresql://palette:palpass@localhost/ldb'
+DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
 
 def time_from_today(hours=0, days=0, months=0):
     return datetime.utcnow() + \
