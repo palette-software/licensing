@@ -11,17 +11,22 @@ class SalesforceAPI(object):
     """ Class that uses the salesforce python module to create
         Contcts, Accounts and Opportunities
     """
+
     @classmethod
-    def lookup_account(cls, data):
-        """ Lookup an account and return the id
-        """
+    def _get_connection(cls):
         salesforce = Salesforce(
             username=System.get_by_key('SALESFORCE-USERNAME'),
             password=System.get_by_key('SALESFORCE-PASSWORD'),
             security_token=System.get_by_key('SALESFORCE-TOKEN'))
+        return salesforce
 
+    @classmethod
+    def lookup_account(cls, data):
+        """ Lookup an account and return the id
+        """
+        conn = cls. _get_connection()
         sql = "SELECT Name, id FROM Account where Name='{0}'"
-        account = salesforce.query(sql.format(data.organization))
+        account = conn.query(sql.format(data.website))
         if account is None or account['totalSize'] == 0:
             accountid = None
         else:
@@ -34,13 +39,10 @@ class SalesforceAPI(object):
         """
         accountid = cls.lookup_account(data)
         if accountid is None:
-            salesforce = Salesforce(
-                        username=System.get_by_key('SALESFORCE-USERNAME'),
-                        password=System.get_by_key('SALESFORCE-PASSWORD'),
-                        security_token=System.get_by_key('SALESFORCE-TOKEN'))
-            account = salesforce.Account.create({'Name':data.website,
-                                                 'Website':data.website,
-                                                 'Phone':data.phone})
+            conn = cls._get_connection()
+            account = conn.Account.create({'Name':data.website,
+                                         'Website':data.website,
+                                         'Phone':data.phone})
             accountid = account['id']
             logger.info('Creating Account Name %s Id %s',
                         data.organization, accountid)
@@ -52,14 +54,11 @@ class SalesforceAPI(object):
         """
         accountid = cls.lookup_account(data)
         if accountid is None:
-            salesforce = Salesforce(
-                        username=System.get_by_key('SALESFORCE-USERNAME'),
-                        password=System.get_by_key('SALESFORCE-PASSWORD'),
-                        security_token=System.get_by_key('SALESFORCE-TOKEN'))
-            salesforce.Account.update(accountid,
-                                      {'Name':data.website,
-                                       'Website':data.website,
-                                       'Phone':data.phone})
+            conn = cls._get_connection()
+            conn.Account.update(accountid,
+                               {'Name':data.website,
+                                'Website':data.website,
+                                'Phone':data.phone})
             logger.info('Updating Account Name %s Id %s',
                         data.organization, accountid)
 
@@ -67,13 +66,10 @@ class SalesforceAPI(object):
     def lookup_contact(cls, data):
         """ Lookup a contact
         """
-        salesforce = Salesforce(
-                        username=System.get_by_key('SALESFORCE-USERNAME'),
-                        password=System.get_by_key('SALESFORCE-PASSWORD'),
-                        security_token=System.get_by_key('SALESFORCE-TOKEN'))
+        conn = cls._get_connection()
         sql = "SELECT Name, id " +\
               "FROM Contact where Firstname='{0}' and Lastname='{1}'"
-        contact = salesforce.query(sql.format(data.firstname, data.lastname))
+        contact = conn.query(sql.format(data.firstname, data.lastname))
         if contact is None or contact['totalSize'] == 0:
             contactid = None
         else:
@@ -86,17 +82,14 @@ class SalesforceAPI(object):
         """
         contactid = cls.lookup_contact(data)
         if contactid is None:
-            salesforce = Salesforce(
-                        username=System.get_by_key('SALESFORCE-USERNAME'),
-                        password=System.get_by_key('SALESFORCE-PASSWORD'),
-                        security_token=System.get_by_key('SALESFORCE-TOKEN'))
-            contact = salesforce.Contact.create(
-                                            {'Firstname':data.firstname,
-                                             'Lastname':data.lastname,
-                                             'Email':data.email,
-                                             'Phone':data.phone,
-                                             'AccountId':accountid,
-                                             'Admin_Role__c':data.admin_role})
+            conn = cls._get_connection()
+            contact = conn.Contact.create(
+                                      {'Firstname':data.firstname,
+                                       'Lastname':data.lastname,
+                                       'Email':data.email,
+                                       'Phone':data.phone,
+                                       'AccountId':accountid,
+                                       'Admin_Role__c':data.admin_role})
             contactid = contact['id']
             logger.info('Creating Contact Name %s %s Id %s',
                         data.firstname, data.lastname, contactid)
@@ -109,11 +102,8 @@ class SalesforceAPI(object):
         """
         contactid = cls.lookup_contact(data)
         if contactid is not None:
-            salesforce = Salesforce(
-                        username=System.get_by_key('SALESFORCE-USERNAME'),
-                        password=System.get_by_key('SALESFORCE-PASSWORD'),
-                        security_token=System.get_by_key('SALESFORCE-TOKEN'))
-            salesforce.Contact.update(contactid,
+            conn = cls._get_connection()
+            conn.Contact.update(contactid,
                                       {'Firstname':data.firstname,
                                        'Lastname':data.lastname,
                                        'Email':data.email,
@@ -134,11 +124,8 @@ class SalesforceAPI(object):
                data.firstname + ' ' + data.lastname + ' ' +\
                now.strftime('%x %X')
 
-        salesforce = Salesforce(
-                        username=System.get_by_key('SALESFORCE-USERNAME'),
-                        password=System.get_by_key('SALESFORCE-PASSWORD'),
-                        security_token=System.get_by_key('SALESFORCE-TOKEN'))
-        salesforce.Opportunity.create(
+        conn = cls._get_connection()
+        conn.Opportunity.create(
                 {'Name':name, 'AccountId':accountid,
                  'StageName': Stage.get_by_id(data.stageid).name,
                  'CloseDate': data.expiration_time.isoformat(),
@@ -160,19 +147,16 @@ class SalesforceAPI(object):
     def update_opportunity(cls, data):
         """ Update a Salesforce Opportunity
         """
-        salesforce = Salesforce(
-            username=System.get_by_key('SALESFORCE-USERNAME'),
-            password=System.get_by_key('SALESFORCE-PASSWORD'),
-            security_token=System.get_by_key('SALESFORCE-TOKEN'))
+        conn = cls._get_connection()
         sql = "SELECT Name, id FROM Opportunity " +\
               "WHERE Palette_License_Key__c='{0}'"
-        opp = salesforce.query(sql.format(data.key))
+        opp = conn.query(sql.format(data.key))
         if opp is not None and opp['totalSize'] == 1:
             logger.info('Updating opportunity Key %s Stage %s',
                         data.key, Stage.get_by_id(data.stageid).name)
 
             oppid = opp['records'][0]['Id']
-            salesforce.Opportunity.update(oppid,
+            conn.Opportunity.update(oppid,
                 {'StageName':Stage.get_by_id(data.stageid).name,
                  'CloseDate':data.expiration_time.isoformat(),
                  'Expiration_Date__c':data.expiration_time.isoformat(),

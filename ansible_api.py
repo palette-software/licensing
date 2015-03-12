@@ -51,10 +51,20 @@ def run_process(entry, success_mailid, fail_mailid):
     else:
         logger.info('Succesfully launched instance {0}'.format(entry.subdomain))
         logger.error('out %s err %s', out, err)
+        email_data = {'license':entry.key,
+                  'firstname':entry.firstname,
+                  'lastname':entry.lastname,
+                  'organization':entry.organization,
+                  'hosting_type':entry.hosting_type,
+                  'promo_code':entry.promo_code,
+                  'subdomain':entry.subdomain,
+                  'access_key':entry.access_key,
+                  'secret_key':entry.secret_key}
+
         SendwithusAPI.subscribe_user(success_mailid,
                     'hello@palette-software.com',
                     entry.email,
-                    entry)
+                    data=email_data)
 
 class AnsibleAPI(object):
     @classmethod

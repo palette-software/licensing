@@ -1,8 +1,5 @@
-import sys
 import time
-import argparse
 import boto.iam
-import json
 
 import logging
 
@@ -61,7 +58,7 @@ POLICY = """{{
 }}
 """
 
-BUCKET_PREFIX='palette-production-'
+BUCKET_PREFIX = 'palette-software-production-'
 
 class BotoAPI(object):
     @classmethod
@@ -74,7 +71,7 @@ class BotoAPI(object):
         elif name == 'US West (Oregon)':
             result = 'us-west-2'
         elif name == 'EU (Frankfurt)':
-            ressult = 'eu-central-1'
+            result = 'eu-central-1'
         elif name == 'EU (Ireland)':
             result = 'eu-west-1'
         elif name == 'Asia Pacific (Sydney)':
@@ -99,36 +96,37 @@ class BotoAPI(object):
         iam = boto.iam.connect_to_region('universal')
         if iam is None:
             logger.error('Boto: Could not get IAM region')
-            return None 
+            return None
 
         try:
             res = iam.create_user(iam_name)
-        except boto.exception.BotoServerError as e:
+        except boto.exception.BotoServerError as error:
             logger.info('IAM user already exists %s', iam_name)
             res = iam.get_user(iam_name)
 
         user = res.user
         try:
             keys = iam.create_access_key(iam_name)
-        except boto.exception.BotoServerError as e:
-            logger.info('Coud not create access key %s %s', iam_name, e)
+        except boto.exception.BotoServerError as error:
+            logger.info('Coud not create access key %s %s', iam_name, error)
             return None
 
-        data = {'name': iam_name, 
-                'title': iam_name.title(), 
+        data = {'name': iam_name,
+                'title': iam_name.title(),
                 'user_arn': user.arn}
         policy = POLICY.format(**data)
 
         logger.info('Creating bucket %s', bucket_name)
-        s3 = boto.s3.connect_to_region(entry.aws_zone)
-        if s3 is None:
-            logger.error('Boto: Could not get region "%s" for S3', region)
+        s3_conn = boto.s3.connect_to_region('us-east-1')
+        if s3_conn is None:
+            logger.error('Boto: Could not get region "%s" for S3',
+                         entry.aws_zone)
             return None
 
         # Sometimes it takes awhile for the user ARN to settle ?!
-        time.sleep(5)
+        time.sleep(3)
 
-        bucket = s3.create_bucket(bucket_name)
+        bucket = s3_conn.create_bucket(bucket_name)
         try:
             bucket.set_policy(policy)
         except boto.exception.S3ResponseError:

@@ -147,7 +147,6 @@ class TrialRequestApplication(GenericWSGIApplication):
                          'Field115',
                          'Field128',
                          'Field130',
-                         'Field131',
                          'Field126')
     def service_POST(self, req):
         """ Handler for Try Palette Form Post
@@ -173,8 +172,6 @@ class TrialRequestApplication(GenericWSGIApplication):
         entry.organization = server_name(entry.website)
         entry.subdomain = get_unique_name(entry.organization)
         entry.name = entry.subdomain
-
-        print entry.name, entry.organization, entry.subdomain
 
         entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
         entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
