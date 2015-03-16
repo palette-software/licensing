@@ -1,4 +1,3 @@
-from datetime import datetime
 import logging
 
 from stage import Stage
@@ -14,11 +13,19 @@ class SalesforceAPI(object):
 
     @classmethod
     def _get_connection(cls):
-        salesforce = Salesforce(
-            username=System.get_by_key('SALESFORCE-USERNAME'),
-            password=System.get_by_key('SALESFORCE-PASSWORD'),
-            security_token=System.get_by_key('SALESFORCE-TOKEN'))
-        return salesforce
+        try:
+            username=System.get_by_key('SALESFORCE-USERNAME')
+            password=System.get_by_key('SALESFORCE-PASSWORD')
+            security_token=System.get_by_key('SALESFORCE-TOKEN')
+            salesforce = Salesforce(
+                username=username,
+                password=password,
+                security_token=security_token)
+            return salesforce
+        except SalesforceAuthenticationFailed:
+            logger.error('Error Logging into Salesforce %s %s %s',
+                        username, password, security_token)
+            return None
 
     @classmethod
     def lookup_account(cls, data):
@@ -113,19 +120,25 @@ class SalesforceAPI(object):
                         data.firstname, data.lastname, contactid)
 
     @classmethod
+    def get_opportunity_name(cls, data):
+        """ Returns the standard name for an opportunity
+        """
+        name = data.organization + ' ' + \
+               data.firstname + ' ' + data.lastname + ' ' +\
+               data.registration_start_time.strftime('%x %X')
+        return name
+
+    @classmethod
     def new_opportunity(cls, data):
         """ Create a new Salesforce Opportunity
         """
         accountid = cls.lookup_or_create_account(data)
         contactid = cls.lookup_or_create_contact(data, accountid)
 
-        now = datetime.utcnow()
-        name = data.organization + ' ' + \
-               data.firstname + ' ' + data.lastname + ' ' +\
-               now.strftime('%x %X')
+        name = cls.get_opportunity_name(data)
 
         conn = cls._get_connection()
-        conn.Opportunity.create(
+        op = conn.Opportunity.create(
                 {'Name':name, 'AccountId':accountid,
                  'StageName': Stage.get_by_id(data.stageid).name,
                  'CloseDate': data.expiration_time.isoformat(),
@@ -136,7 +149,8 @@ class SalesforceAPI(object):
                  'AWS_Region__c':data.aws_zone,
                  'Palette_Cloud_subdomain__c':data.subdomain,
                  'Promo_Code__c':data.promo_code,
-                 'Trial_Request_Date_Time__c':now.isoformat(),
+                 'Trial_Request_Date_Time__c':\
+                                 data.registration_start_time.isoformat(),
                  'Access_Key__c':data.access_key,
                  'Secret_Access_Key__c':data.secret_key})
         logger.info('Creating new opportunity with Contact ' + \

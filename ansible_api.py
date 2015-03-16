@@ -19,12 +19,13 @@ def run_process(entry, success_mailid, fail_mailid):
     zone = System.get_by_key('PALETTECLOUD-DNS-ZONE')
 
     path = ANSIBLE_PATH + '/palette_instance.sh'
-    cmd = 'cd {0};/usr/bin/sudo {1} {2} {3} {4} "{5}" "{6}" "{7}" "{8}"'.format(\
+    cmd = 'cd {0};/usr/bin/sudo {1} {2} {3} {4} "{5}" "{6}" "{7}" "{8}" "{9}"'\
+            .format(\
             ANSIBLE_PATH,
             path,
             entry.subdomain,
             REGION, zone, entry.name, 'Palette Online',
-            entry.access_key, entry.secret_key)
+            entry.access_key, entry.secret_key, entry.key)
     logger.info('Running %s', cmd)
 
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,

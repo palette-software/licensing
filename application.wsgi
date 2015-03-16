@@ -139,14 +139,13 @@ class TrialRequestApplication(GenericWSGIApplication):
 
     AWS_HOSTING = 'Your AWS Account with our AMI Image'
     VMWARE_HOSTING = 'Your Data Center with our VMware Image'
-    PCLOUD_HOSTING = 'Palette Online in our Data Center'
+    PCLOUD_HOSTING = 'Palette Cloud in our Data Center'
 
     @required_parameters('Field133',
                          'Field134',
                          'Field3',
                          'Field115',
                          'Field128',
-                         'Field130',
                          'Field126')
     def service_POST(self, req):
         """ Handler for Try Palette Form Post
@@ -175,6 +174,7 @@ class TrialRequestApplication(GenericWSGIApplication):
 
         entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
         entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
+        entry.registration_start_time = datetime.utcnow()
 
         session = get_session()
         session.add(entry)
@@ -201,10 +201,11 @@ class TrialRequestApplication(GenericWSGIApplication):
                      System.get_by_key('PALETTECLOUD-LAUNCH-SUCCESS-ID'),
                      System.get_by_key('PALETTECLOUD-LAUNCH-FAIL-ID'))
 
-        SlackAPI.notify('Trial request from: '
-                '{0} ({1}) Org: {2} - Type: {3}'.format(
-                entry.firstname + ' ' + entry.lastname, entry.email,
-                entry.organization, entry.hosting_type))
+        SlackAPI.notify('Trial request Opportunity: '
+                '{0} ({1}) - Type: {2}'.format(
+                SalesforceAPI.get_opportunity_name(entry),
+                entry.email,
+                entry.hosting_type))
 
         logger.info('Trial request success for {0} {1}'\
                     .format(entry.email, entry.key))
@@ -400,6 +401,12 @@ class BuyRequestApplication(GenericWSGIApplication):
 
         logger.info('Processing Buy get request info for {0}'.format(key))
 
+        SlackAPI.notify('Buy browse event from Opportunity: '
+                '{0} ({1}) - Type: {2}'.format(
+                SalesforceAPI.get_opportunity_name(entry),
+                entry.email,
+                entry.hosting_type))
+
         fields = {'field7':entry.key, 'field3':entry.firstname,
                   'field4':entry.lastname, 'field5':entry.email,
                   'field6':entry.website, 'field21':entry.phone}
@@ -459,10 +466,11 @@ class BuyRequestApplication(GenericWSGIApplication):
                       'hello@palette-software.com',
                       populate_buy_email_data(entry))
 
-        SlackAPI.notify('Buy request from: '
-                '{0} ({1}) Org: {2} - Type: {3}'.format(\
-                entry.firstname + ' ' + entry.lastname, entry.email,
-                entry.website, entry.hosting_type))
+        SlackAPI.notify('Buy request Opportunity: '
+                '{0} ({1}) - Type: {2}'.format(\
+                SalesforceAPI.get_opportunity_name(entry),
+                entry.email,
+                entry.hosting_type))
 
         logger.info('Buy request success for {0}'.format(key))
 
