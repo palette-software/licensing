@@ -2,7 +2,7 @@ import logging
 
 from stage import Stage
 from system import System
-from simple_salesforce import Salesforce
+from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 
 logger = logging.getLogger('licensing')
 
@@ -14,9 +14,9 @@ class SalesforceAPI(object):
     @classmethod
     def _get_connection(cls):
         try:
-            username=System.get_by_key('SALESFORCE-USERNAME')
-            password=System.get_by_key('SALESFORCE-PASSWORD')
-            security_token=System.get_by_key('SALESFORCE-TOKEN')
+            username = System.get_by_key('SALESFORCE-USERNAME')
+            password = System.get_by_key('SALESFORCE-PASSWORD')
+            security_token = System.get_by_key('SALESFORCE-TOKEN')
             salesforce = Salesforce(
                 username=username,
                 password=password,
