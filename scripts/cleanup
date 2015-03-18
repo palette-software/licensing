@@ -1,0 +1,109 @@
+#!/usr/bin/env python
+import sys
+sys.path.append('/opt/palette')
+
+from akiri.framework.sqlalchemy import create_engine, get_session
+
+from licensing import License
+from salesforce_api import SalesforceAPI
+from slack_api import SlackAPI
+from boto_api import BotoAPI
+
+DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
+
+def delete_from_aws(entry):
+    """ Terminates an instance, delete an IAM user and
+        delete the s3 bucket"""
+
+    print 'Terminating instance \'{0}\''.format(entry.name)
+
+    BotoAPI.terminate_instance(entry.name, entry.aws_zone)
+
+    BotoAPI.delete_user(entry.name)
+
+    BotoAPI.delete_bucket(entry.name, entry.aws_zone)
+
+def delete_from_sf(entry):
+    """ Deletes a Salesforce Opportunity, and optionally
+        the SF account and/or contact"""
+
+    print 'Deleting Opportunity \'{0}\''\
+           .format(SalesforceAPI.get_opportunity_name(entry))
+
+    SalesforceAPI.delete_contact(entry)
+
+    SalesforceAPI.delete_account(entry)
+
+    SalesforceAPI.delete_opportunity(entry)
+
+def delete_from_db(entry):
+    """ Deletes the record from the licensing DB
+    """
+    print 'Deleting DB entry \'{0}\''.format(entry.name)
+
+    session = get_session()
+    session.delete(entry)
+    session.commit()
+
+def cleanup(**kwargs):
+    """ Lookup and get a unique name for the server based on
+        what is already in the database
+    """
+    if kwargs.get('aws') is False and \
+       kwargs.get('sf') is False and \
+       kwargs.get('db') is False:
+        kwargs['aws'] = True
+        kwargs['sf'] = True
+        kwargs['db'] = True
+
+    name = kwargs['name']
+    result = License.get_by_name(name)
+    if result is None:
+        print 'License entry \'{0}\' not found'.format(name)
+        return 1
+
+    print 'Cleaning up entry \'{0}\''.format(name)
+    if kwargs.get('aws'):
+        delete_from_aws(result)
+
+    if kwargs.get('sf'):
+        delete_from_sf(result)
+
+    # save info before deleting
+    email = result.email
+    name = SalesforceAPI.get_opportunity_name(result)
+    hosting_type = result.hosting_type
+
+    if kwargs.get('db'):
+        delete_from_db(result)
+
+    if kwargs.get('slack'):
+        SlackAPI.notify('Cleaned up entry from Licensing '
+                '{0} ({1}) - Type: {2}'.format(
+                name,
+                email,
+                hosting_type))
+
+# pylint: disable=invalid-name
+database = DATABASE
+create_engine(database, echo=False, pool_size=20, max_overflow=30)
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('name',
+                        help='Unique name for the license to cleanup')
+    parser.add_argument('--aws', action='store_true', default=False,
+                        help='Perform AWS cleanups')
+
+    parser.add_argument('--sf', action='store_true', default=False,
+                        help='Perform Salesforce cleanups')
+
+    parser.add_argument('--db', action='store_true', default=False,
+                        help='Perform DB cleanup')
+
+    parser.add_argument('--slack', action='store_true', default=False,
+                        help='Send a slack message')
+    args = parser.parse_args()
+    cleanup(**vars(args))

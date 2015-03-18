@@ -2,7 +2,7 @@ import logging
 
 from stage import Stage
 from system import System
-from simple_salesforce import Salesforce
+from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 
 logger = logging.getLogger('licensing')
 
@@ -14,9 +14,9 @@ class SalesforceAPI(object):
     @classmethod
     def _get_connection(cls):
         try:
-            username=System.get_by_key('SALESFORCE-USERNAME')
-            password=System.get_by_key('SALESFORCE-PASSWORD')
-            security_token=System.get_by_key('SALESFORCE-TOKEN')
+            username = System.get_by_key('SALESFORCE-USERNAME')
+            password = System.get_by_key('SALESFORCE-PASSWORD')
+            security_token = System.get_by_key('SALESFORCE-TOKEN')
             salesforce = Salesforce(
                 username=username,
                 password=password,
@@ -70,6 +70,17 @@ class SalesforceAPI(object):
                         data.organization, accountid)
 
     @classmethod
+    def delete_account(cls, data):
+        """ Delete an account
+        """
+        accountid = cls.lookup_account(data)
+        if accountid is not None:
+            conn = cls._get_connection()
+            conn.Account.delete(accountid)
+            logger.info('Deleted Account Name %s Id %s',
+                        data.organization, accountid)
+
+    @classmethod
     def lookup_contact(cls, data):
         """ Lookup a contact
         """
@@ -120,6 +131,17 @@ class SalesforceAPI(object):
                         data.firstname, data.lastname, contactid)
 
     @classmethod
+    def delete_contact(cls, data):
+        """ Deletes a contact
+        """
+        contactid = cls.lookup_contact(data)
+        if contactid is not None:
+            conn = cls._get_connection()
+            conn.Contact.delete(contactid)
+            logger.info('Deleted Contact Name %s %s Id %s',
+                        data.firstname, data.lastname, contactid)
+
+    @classmethod
     def get_opportunity_name(cls, data):
         """ Returns the standard name for an opportunity
         """
@@ -138,7 +160,7 @@ class SalesforceAPI(object):
         name = cls.get_opportunity_name(data)
 
         conn = cls._get_connection()
-        op = conn.Opportunity.create(
+        conn.Opportunity.create(
                 {'Name':name, 'AccountId':accountid,
                  'StageName': Stage.get_by_id(data.stageid).name,
                  'CloseDate': data.expiration_time.isoformat(),
@@ -185,3 +207,19 @@ class SalesforceAPI(object):
             'Trial_Registered_Date_Time__c':data.trial_start_time.isoformat(),
             'License_Start_Date_Time__c':data.license_start_time.isoformat()
              })
+
+    @classmethod
+    def delete_opportunity(cls, data):
+        """ Delete an opportunity
+        """
+        conn = cls._get_connection()
+        sql = "SELECT Name, id FROM Opportunity " +\
+              "WHERE Palette_License_Key__c='{0}'"
+        opp = conn.query(sql.format(data.key))
+        if opp is not None and opp['totalSize'] == 1:
+            logger.info('Deleting opportunity Key %s Stage %s',
+                        data.key, Stage.get_by_id(data.stageid).name)
+
+            oppid = opp['records'][0]['Id']
+            conn.Opportunity.delete(oppid)
+

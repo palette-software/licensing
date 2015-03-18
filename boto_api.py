@@ -1,5 +1,6 @@
 import time
 import boto.iam
+from boto import ec2
 
 import logging
 
@@ -135,3 +136,59 @@ class BotoAPI(object):
             bucket.set_policy(policy)
 
         return keys.access_key_id, keys.secret_access_key
+
+    @classmethod
+    def terminate_instance(cls, name, region):
+        """ Terminates an instance on AWS
+        """
+        conn = ec2.connect_to_region(region)
+        reservations = conn.get_all_reservations()
+        instances = [i for r in reservations for i in r.instances]
+        item = None
+        for i in instances:
+            if "Name" in i.tags and name == i.tags['Name']:
+                item = i.id
+                break
+
+        if item is not None:
+            conn.terminate_instances(instance_ids=item)
+        else:
+            print 'Could not find instance named \'{0}\' on AWS'.format(name)
+
+    @classmethod
+    def delete_user(cls, name):
+        """ Deletes an IAM user
+        """
+        user_name = BUCKET_PREFIX + name
+        iam = boto.iam.connect_to_region('universal')
+        try:
+            access_keys = iam.get_all_access_keys(user_name)
+
+            for i in access_keys['list_access_keys_response']\
+                                ['list_access_keys_result']\
+                                ['access_key_metadata']:
+                iam.delete_access_key(i['access_key_id'], user_name=user_name)
+
+            iam.delete_user(user_name)
+        except boto.exception.BotoServerError as error:
+            print error.message
+
+    @classmethod
+    def delete_bucket(cls, name, region):
+        """ Delete a bucket form S3
+        """
+        bucket_name = BUCKET_PREFIX + name
+        bucket = None
+        try:
+            s3_conn = boto.s3.connect_to_region(region)
+            bucket = s3_conn.get_bucket(bucket_name)
+        except boto.exception.S3ResponseError:
+            print 'The specified bucket \'{0}\' does not exist'\
+                  .format(bucket_name)
+
+        if bucket is not None:
+            s3_conn.delete_bucket(bucket)
+
+
+
+
