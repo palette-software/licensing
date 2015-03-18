@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-from urlparse import urlparse
+from urlparse import urlsplit
 import sys
 
 class State(object):
@@ -52,7 +52,12 @@ def server_name(hostname):
         subdomain = parts[-3]
     return subdomain
 
-def strip_scheme(url):
-    parsed = urlparse(url)
-    scheme = "%s://" % parsed.scheme
-    return parsed.geturl().replace(scheme, '', 1)
+def get_netloc(url):
+    """ Returns the network part of the URL stripping away the scheme and the
+        parameters after the domain name"""
+    parsed = urlsplit(url)
+    if len(parsed.scheme) == 0:
+        # assume http if no scheme
+        url = 'http://' + url
+        parsed = urlsplit(url)
+    return parsed.netloc

@@ -20,7 +20,7 @@ from stage import Stage
 from licensing import License
 from system import System
 from support import Support
-from utils import strip_scheme, server_name
+from utils import get_netloc, server_name
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
@@ -160,7 +160,7 @@ class TrialRequestApplication(GenericWSGIApplication):
             days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
         entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
         entry.trial = True #FIXME
-        entry.website = strip_scheme(entry.website).lower()
+        entry.website = get_netloc(entry.website).lower()
         entry.organization = server_name(entry.website)
         entry.subdomain = get_unique_name(entry.organization)
         entry.name = entry.subdomain
