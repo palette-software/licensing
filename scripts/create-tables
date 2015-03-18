@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 # pylint: disable=invalid-name
+import os
 import sys
+sys.path.append(os.path.abspath(os.getcwd()))
 sys.path.append('/opt/palette')
 
 import sqlalchemy
 from akiri.framework.sqlalchemy import Base
-
-# pylint: disable=import-error,no-name-in-module
-from akiri.framework.ext.sqlalchemy import meta
-# pylint: enable=import-error,no-name-in-module
 
 # These are need for create_all().
 # pylint: disable=unused-import
@@ -18,7 +16,7 @@ from stage import Stage
 from system import System
 # pylint: enable=unused-import
 
-DATABASE='postgresql://ldb:Tableau2014@localhost/ldb'
+DATABASE='postgresql://palette:palpass@localhost/licensedb'
 def main():
     data = {'__name__': ''}
     execfile('application.wsgi', data)

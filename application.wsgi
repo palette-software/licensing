@@ -212,6 +212,83 @@ class TrialRequestApplication(GenericWSGIApplication):
 
         return {'license-key' :entry.key}
 
+
+TRIAL_FIELDS = {
+    'fname':'firstname', 'lname':'lastname',
+    'email':'email',
+    'text-yui_3_10_1_1_1389902554996_16499-field': 'website',
+    'radio-yui_3_17_2_1_1407117642911_45717-field':'admin_role',
+    'radio-yui_3_17_2_1_1426521445942_51014-field':'hosting_type'
+}
+
+class Trial2RequestApplication(GenericWSGIApplication):
+
+    TRIAL_FIELDS = TRIAL_FIELDS
+    AWS_HOSTING = 'Your AWS Account with our AMI Image'
+    VMWARE_HOSTING = 'Your Data Center with our VMware Image'
+    PCLOUD_HOSTING = 'Palette Cloud in our Data Center'
+
+    REDIRECT_URL = 'http://www.palette-software.com/trial-confirmation'
+
+    @required_parameters(*TRIAL_FIELDS.keys())
+    def service_POST(self, req):
+        """ Handler for Try Palette Form Post
+        """
+        entry = License()
+        translate_values(req.params, entry, self.TRIAL_FIELDS)
+        logger.info('New trial request for %s %s %s %s', entry.website,
+                    entry.firstname, entry.lastname, entry.email)
+        entry.key = str(uuid.uuid4())
+        entry.expiration_time = time_from_today(
+            days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
+        entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
+        entry.trial = True #FIXME
+        entry.website = strip_scheme(entry.website).lower()
+        entry.organization = server_name(entry.website)
+        entry.subdomain = get_unique_name(entry.organization)
+        entry.name = entry.subdomain
+
+        entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
+        entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
+        entry.registration_start_time = datetime.utcnow()
+
+        session = get_session()
+        session.add(entry)
+        session.commit()
+
+        # create or use an existing opportunity
+        SalesforceAPI.new_opportunity(entry)
+        # subscribe the user to the trial list
+        if entry.hosting_type == TrialRequestApplication.AWS_HOSTING:
+            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-ID')
+        elif entry.hosting_type == TrialRequestApplication.VMWARE_HOSTING:
+            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-VMWARE-ID')
+        elif entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
+            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-PCLOUD-ID')
+        else:
+            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-DONTKNOW-ID')
+        SendwithusAPI.subscribe_user(mailid,
+                                     'hello@palette-software.com',
+                                     entry.email,
+                                     populate_email_data(entry))
+
+        if entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
+            AnsibleAPI.launch_instance(entry,
+                     System.get_by_key('PALETTECLOUD-LAUNCH-SUCCESS-ID'),
+                     System.get_by_key('PALETTECLOUD-LAUNCH-FAIL-ID'))
+
+        SlackAPI.notify('Trial request Opportunity: '
+                '{0} ({1}) - Type: {2}'.format(
+                SalesforceAPI.get_opportunity_name(entry),
+                entry.email,
+                entry.hosting_type))
+
+        logger.info('Trial request success for %s %s', entry.email, entry.key)
+
+        # use 302 here so that the browswer redirects with a GET request.
+        return exc.HTTPFound(location=self.REDIRECT_URL)
+
+
 class TrialRegisterApplication(GenericWSGIApplication):
     @required_parameters('system-id', 'license-key',
                          'license-type', 'license-quantity')
@@ -498,6 +575,7 @@ router.add_route(r'/buy\Z', BuyRequestApplication())
 
 router.add_route(r'/api/trial_request\Z|/api/trial\Z',
                  TrialRequestApplication())
+router.add_route(r'/api/trial2\Z', Trial2RequestApplication())
 router.add_route(r'/api/trial_register\Z', TrialRegisterApplication())
 router.add_route(r'/api/trial_start\Z', TrialStartApplication())
 router.add_route(r'/api/buy_request', BuyRequestApplication())
