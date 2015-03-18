@@ -127,91 +127,6 @@ class HelloApplication(GenericWSGIApplication):
         # This could be tracked :).
         return str(datetime.now())
 
-class TrialRequestApplication(GenericWSGIApplication):
-    TRIAL_FIELDS = {'Field133':'firstname',
-                    'Field134':'lastname',
-                    'Field3':'email',
-                    'Field115':'website',
-                    'Field128':'hosting_type',
-                    'Field130':'aws_zone',
-                    'Field131':'promo_code',
-                    'Field126':'admin_role'}
-
-    AWS_HOSTING = 'Your AWS Account with our AMI Image'
-    VMWARE_HOSTING = 'Your Data Center with our VMware Image'
-    PCLOUD_HOSTING = 'Palette Cloud in our Data Center'
-
-    @required_parameters('Field133',
-                         'Field134',
-                         'Field3',
-                         'Field115',
-                         'Field128',
-                         'Field126')
-    def service_POST(self, req):
-        """ Handler for Try Palette Form Post
-        """
-        firstname = req.params['Field133']
-        lastname = req.params['Field134']
-        fullname = firstname + " " + lastname
-        email = req.params['Field3']
-        website = strip_scheme(req.params['Field115']).lower()
-
-        logger.info('New trial request for {0} {1} {2}'\
-              .format(website, fullname, email))
-
-        entry = License()
-        translate_values(req.params, entry,
-                         TrialRequestApplication.TRIAL_FIELDS)
-        entry.key = str(uuid.uuid4())
-        entry.expiration_time = time_from_today(
-            days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
-        entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
-        entry.trial = True #FIXME
-        entry.website = website
-        entry.organization = server_name(entry.website)
-        entry.subdomain = get_unique_name(entry.organization)
-        entry.name = entry.subdomain
-
-        entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
-        entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
-        entry.registration_start_time = datetime.utcnow()
-
-        session = get_session()
-        session.add(entry)
-        session.commit()
-
-        # create or use an existing opportunity
-        SalesforceAPI.new_opportunity(entry)
-        # subscribe the user to the trial list
-        if entry.hosting_type == TrialRequestApplication.AWS_HOSTING:
-            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-ID')
-        elif entry.hosting_type == TrialRequestApplication.VMWARE_HOSTING:
-            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-VMWARE-ID')
-        elif entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
-            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-PCLOUD-ID')
-        else:
-            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-DONTKNOW-ID')
-        SendwithusAPI.subscribe_user(mailid,
-                                     'hello@palette-software.com',
-                                     entry.email,
-                                     populate_email_data(entry))
-
-        if entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
-            AnsibleAPI.launch_instance(entry,
-                     System.get_by_key('PALETTECLOUD-LAUNCH-SUCCESS-ID'),
-                     System.get_by_key('PALETTECLOUD-LAUNCH-FAIL-ID'))
-
-        SlackAPI.notify('Trial request Opportunity: '
-                '{0} ({1}) - Type: {2}'.format(
-                SalesforceAPI.get_opportunity_name(entry),
-                entry.email,
-                entry.hosting_type))
-
-        logger.info('Trial request success for {0} {1}'\
-                    .format(entry.email, entry.key))
-
-        return {'license-key' :entry.key}
-
 
 TRIAL_FIELDS = {
     'fname':'firstname', 'lname':'lastname',
@@ -221,7 +136,7 @@ TRIAL_FIELDS = {
     'radio-yui_3_17_2_1_1426521445942_51014-field':'hosting_type'
 }
 
-class Trial2RequestApplication(GenericWSGIApplication):
+class TrialRequestApplication(GenericWSGIApplication):
 
     TRIAL_FIELDS = TRIAL_FIELDS
     AWS_HOSTING = 'Your AWS Account with our AMI Image'
@@ -349,9 +264,9 @@ class TrialRegisterApplication(GenericWSGIApplication):
                 'stage': Stage.get_by_id(entry.stageid).name,
                 'expiration-time': str(entry.expiration_time)}
 
+
 class TrialStartApplication(GenericWSGIApplication):
-    @required_parameters('system-id', 'license-key',
-                         'license-type', 'license-quantity')
+    @required_parameters('system-id', 'license-key')
     def service_POST(self, req):
         """ Handle a Trial start
         """
@@ -370,22 +285,9 @@ class TrialStartApplication(GenericWSGIApplication):
                    .format(key, system_id, entry.system_id))
         entry.system_id = system_id
 
-        license_type = req.params['license-type']
-        if entry.type and entry.type != license_type:
-            logger.error('Invalid trial start request for key {0}. '
-                         'License Type from request {1} doesnt match DB {2}'\
-                   .format(key, license_type, entry.type))
-        entry.type = license_type
-
-        license_quantity = int(req.params['license-quantity'])
-        if entry.n and entry.n != license_quantity:
-            logger.error('Invalid trial start request for key {0}. '
-                         'License Type from request {1} doesnt match DB {2}'\
-                   .format(key, license_quantity, entry.n))
-        entry.n = license_quantity
-
         session = get_session()
 
+        # FIXME: *only* do this if in the correct stage (otherwise free trials!)
         if entry.stageid != Stage.get_by_key('STAGE-TRIAL-STARTED').id:
             logger.info('Starting Trial for key {0}'.format(key))
 
@@ -423,6 +325,7 @@ class TrialStartApplication(GenericWSGIApplication):
         return {'trial': entry.trial,
                 'stage': Stage.get_by_id(entry.stageid).name,
                 'expiration-time': str(entry.expiration_time)}
+
 
 class BuyRequestApplication(GenericWSGIApplication):
     """ Class that Handles get/post methods for the palette buy url
@@ -573,11 +476,10 @@ router.add_route(r'/trial-expired\Z', BuyRequestApplication())
 router.add_route(r'/license-expired\Z', BuyRequestApplication())
 router.add_route(r'/buy\Z', BuyRequestApplication())
 
-router.add_route(r'/api/trial_request\Z|/api/trial\Z',
-                 TrialRequestApplication())
-router.add_route(r'/api/trial2\Z', Trial2RequestApplication())
+router.add_route(r'/api/trial\Z', TrialRequestApplication())
+router.add_route(r'/api/trial-start\Z', TrialStartApplication())
+
 router.add_route(r'/api/trial_register\Z', TrialRegisterApplication())
-router.add_route(r'/api/trial_start\Z', TrialStartApplication())
 router.add_route(r'/api/buy_request', BuyRequestApplication())
 
 application = SessionMiddleware(app=router)
