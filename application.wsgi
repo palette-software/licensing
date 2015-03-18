@@ -49,8 +49,10 @@ def translate_values(source, entry, fields):
 def get_unique_name(name):
     """ Lookup and get a unique name for the server based on
         what is already in the database
+        The algorithm comes up with names in this format:
+        foo, foo-2, foo-3
     """
-    count = 1
+    count = 2
     to_try = name
 
     while True:
