@@ -51,13 +51,6 @@ def cleanup(**kwargs):
     """ Lookup and get a unique name for the server based on
         what is already in the database
     """
-    if kwargs.get('aws') is False and \
-       kwargs.get('sf') is False and \
-       kwargs.get('db') is False:
-        kwargs['aws'] = True
-        kwargs['sf'] = True
-        kwargs['db'] = True
-
     name = kwargs['name']
     result = License.get_by_name(name)
     if result is None:
@@ -65,10 +58,10 @@ def cleanup(**kwargs):
         return 1
 
     print 'Cleaning up entry \'{0}\''.format(name)
-    if kwargs.get('aws'):
+    if not kwargs.get('no_aws'):
         delete_from_aws(result)
 
-    if kwargs.get('sf'):
+    if not kwargs.get('no_sf'):
         delete_from_sf(result)
 
     # save info before deleting
@@ -76,7 +69,7 @@ def cleanup(**kwargs):
     name = SalesforceAPI.get_opportunity_name(result)
     hosting_type = result.hosting_type
 
-    if kwargs.get('db'):
+    if not kwargs.get('no_db'):
         delete_from_db(result)
 
     if kwargs.get('slack'):
@@ -96,14 +89,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('name',
                         help='Unique name for the license to cleanup')
-    parser.add_argument('--aws', action='store_true', default=False,
-                        help='Perform AWS cleanups')
+    parser.add_argument('--no-aws', action='store_true', default=False,
+                        help='Do not perform AWS cleanups')
 
-    parser.add_argument('--sf', action='store_true', default=False,
-                        help='Perform Salesforce cleanups')
+    parser.add_argument('--no-sf', action='store_true', default=False,
+                        help='Do not perform Salesforce cleanups')
 
-    parser.add_argument('--db', action='store_true', default=False,
-                        help='Perform DB cleanup')
+    parser.add_argument('--no-db', action='store_true', default=False,
+                        help='Do not perform DB cleanup')
 
     parser.add_argument('--slack', action='store_true', default=False,
                         help='Send a slack message')
