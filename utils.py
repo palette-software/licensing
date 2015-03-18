@@ -63,10 +63,11 @@ def get_netloc(url):
         parsed = urlsplit(url)
     return parsed.netloc
 
-def to_localtime(dt):
-    """ Converts a UTC based datetime to localtime using the machine's Timezone info
+def to_localtime(from_dt):
+    """ Converts a UTC based datetime to localtime using the
+        machine's Timezone info
     """
     mytz = tz.tzlocal()
     utc = tz.gettz('UTC')
-    dt = dt.replace(tzinfo=utc)
-    return dt.astimezone(mytz)
+    from_dt = from_dt.replace(tzinfo=utc)
+    return from_dt.astimezone(mytz)
