@@ -2,6 +2,7 @@ import logging
 
 from stage import Stage
 from system import System
+from utils import to_localtime
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 
 logger = logging.getLogger('licensing')
@@ -147,7 +148,7 @@ class SalesforceAPI(object):
         """
         name = data.organization + ' ' + \
                data.firstname + ' ' + data.lastname + ' ' +\
-               data.registration_start_time.strftime('%x %X')
+               to_localtime(data.registration_start_time).strftime('%x %X')
         return name
 
     @classmethod

@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 from urlparse import urlsplit
+from dateutil import tz
 import sys
 
 class State(object):
@@ -61,3 +62,11 @@ def get_netloc(url):
         url = 'http://' + url
         parsed = urlsplit(url)
     return parsed.netloc
+
+def to_localtime(dt):
+    """ Converts a UTC based datetime to localtime using the machine's Timezone info
+    """
+    mytz = tz.tzlocal()
+    utc = tz.gettz('UTC')
+    dt = dt.replace(tzinfo=utc)
+    return dt.astimezone(mytz)
