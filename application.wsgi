@@ -20,7 +20,7 @@ from stage import Stage
 from licensing import License
 from system import System
 from support import Support
-from utils import get_netloc, server_name
+from utils import get_netloc, server_name, hostname_only
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
@@ -162,8 +162,10 @@ class TrialRequestApplication(GenericWSGIApplication):
         entry.trial = True #FIXME
         entry.website = get_netloc(entry.website).lower()
         entry.organization = server_name(entry.website)
-        entry.subdomain = get_unique_name(entry.organization)
+        entry.subdomain = get_unique_name(hostname_only(entry.organization))
         entry.name = entry.subdomain
+        print '{0} {1} {2} {3}'.format(entry.website, entry.organization,
+                                       entry.subdomain, entry.name)
 
         entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
         entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)

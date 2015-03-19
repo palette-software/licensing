@@ -2,7 +2,7 @@ import logging
 
 from stage import Stage
 from system import System
-from utils import to_localtime
+from utils import to_localtime, server_name
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 
 logger = logging.getLogger('licensing')
@@ -40,7 +40,7 @@ class SalesforceAPI(object):
         """
         conn = cls. _get_connection()
         sql = "SELECT Name, id FROM Account where Name='{0}'"
-        account = conn.query(sql.format(data.website))
+        account = conn.query(sql.format(data.organization))
         if account is None or account['totalSize'] == 0:
             accountid = None
         else:
@@ -54,7 +54,7 @@ class SalesforceAPI(object):
         accountid = cls.lookup_account(data)
         if accountid is None:
             conn = cls._get_connection()
-            account = conn.Account.create({'Name':data.website,
+            account = conn.Account.create({'Name':data.organization,
                                          'Website':data.website,
                                          'Phone':data.phone})
             accountid = account['id']
@@ -70,7 +70,7 @@ class SalesforceAPI(object):
         if accountid is None:
             conn = cls._get_connection()
             conn.Account.update(accountid,
-                               {'Name':data.website,
+                               {'Name':data.organization,
                                 'Website':data.website,
                                 'Phone':data.phone})
             logger.info('Updating Account Name %s Id %s',

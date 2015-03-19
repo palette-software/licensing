@@ -125,15 +125,17 @@ class BotoAPI(object):
             return None
 
         # Sometimes it takes awhile for the user ARN to settle ?!
-        time.sleep(3)
+        time.sleep(2)
 
         bucket = s3_conn.create_bucket(bucket_name)
-        try:
-            bucket.set_policy(policy)
-        except boto.exception.S3ResponseError:
-            # try once more after an even longer sleep...
-            time.sleep(3)
-            bucket.set_policy(policy)
+        while True:
+            try:
+                bucket.set_policy(policy)
+                break
+            except boto.exception.S3ResponseError:
+                # try again
+                time.sleep(2)
+                logger.error('Trying to set bucket policy again')
 
         return keys.access_key_id, keys.secret_access_key
 

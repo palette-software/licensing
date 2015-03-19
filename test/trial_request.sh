@@ -14,7 +14,6 @@ PCLOUD='Palette Online'
 SUBDOMAIN='test-palette'
 
 # Test new user
-#http -f POST $URL Field1='Vahid' Field2='Kowsari' Field3='vahid@kowsari.com' Field6='Test Inc.' Field115='test.com' Field8="$VMWARE" Field9=''
 
 # Test with existing Organization
 
@@ -23,3 +22,4 @@ SUBDOMAIN='test-palette'
 # Test with existing Subdomain
 
 http -f POST $URL fname='Vahid' lname='Kowsari' email='vahid@kowsari.com' text-yui_3_10_1_1_1389902554996_16499-field='test.com' radio-yui_3_17_2_1_1407117642911_45717-field="Tableau Admin" radio-yui_3_17_2_1_1426521445942_51014-field="$AWS"
+http -f POST $URL fname='Vahid' lname='Kowsari' email='vahid@kowsari.com' text-yui_3_10_1_1_1389902554996_16499-field='www.test.com' radio-yui_3_17_2_1_1407117642911_45717-field="Tableau Admin" radio-yui_3_17_2_1_1426521445942_51014-field="$AWS"

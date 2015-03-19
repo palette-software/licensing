@@ -48,10 +48,9 @@ def server_name(hostname):
     """ Returns the server part which is usually the next field after the
         top level domain part in the URL"""
     parts = hostname.split('.')
-    subdomain = parts[-2]
-    if subdomain in ['com', 'co', 'org', 'net']:
-        subdomain = parts[-3]
-    return subdomain
+    if parts[0] == 'www':
+        parts.pop(0)
+    return '.'.join(parts)
 
 def get_netloc(url):
     """ Returns the network part of the URL stripping away the scheme and the
