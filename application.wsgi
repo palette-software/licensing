@@ -174,7 +174,7 @@ class TrialRequestApplication(GenericWSGIApplication):
         session.commit()
 
         # create or use an existing opportunity
-        SalesforceAPI.new_opportunity(entry)
+        opp_id = SalesforceAPI.new_opportunity(entry)
         # subscribe the user to the trial list
         if entry.hosting_type == TrialRequestApplication.AWS_HOSTING:
             mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-ID')
@@ -194,11 +194,13 @@ class TrialRequestApplication(GenericWSGIApplication):
                      System.get_by_key('PALETTECLOUD-LAUNCH-SUCCESS-ID'),
                      System.get_by_key('PALETTECLOUD-LAUNCH-FAIL-ID'))
 
+        sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
         SlackAPI.notify('Trial request Opportunity: '
-                '{0} ({1}) - Type: {2}'.format(
+                '{0} ({1}) - Type: {2} {3}'.format(
                 SalesforceAPI.get_opportunity_name(entry),
                 entry.email,
-                entry.hosting_type))
+                entry.hosting_type,
+                sf_url))
 
         logger.info('Trial request success for %s %s', entry.email, entry.key)
 

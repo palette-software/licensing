@@ -7,6 +7,8 @@ from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 
 logger = logging.getLogger('licensing')
 
+SALESFORCE_URL = 'https://na4.salesforce.com'
+
 class SalesforceAPI(object):
     """ Class that uses the salesforce python module to create
         Contcts, Accounts and Opportunities
@@ -27,6 +29,10 @@ class SalesforceAPI(object):
             logger.error('Error Logging into Salesforce %s %s %s',
                         username, password, security_token)
             return None
+
+    @classmethod
+    def get_url(cls):
+        return SALESFORCE_URL
 
     @classmethod
     def lookup_account(cls, data):
@@ -161,7 +167,7 @@ class SalesforceAPI(object):
         name = cls.get_opportunity_name(data)
 
         conn = cls._get_connection()
-        conn.Opportunity.create(
+        opp = conn.Opportunity.create(
                 {'Name':name, 'AccountId':accountid,
                  'StageName': Stage.get_by_id(data.stageid).name,
                  'CloseDate': data.expiration_time.isoformat(),
@@ -179,6 +185,7 @@ class SalesforceAPI(object):
         logger.info('Creating new opportunity with Contact ' + \
                     'Name %s %s Account Id %s Contact Id %s',
                     data.firstname, data.lastname, accountid, contactid)
+        return opp['id']
 
     @classmethod
     def update_opportunity(cls, data):
