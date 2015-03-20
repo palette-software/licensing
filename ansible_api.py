@@ -18,7 +18,7 @@ def run_process(entry, success_mailid, fail_mailid):
 
     zone = System.get_by_key('PALETTECLOUD-DNS-ZONE')
 
-    path = ANSIBLE_PATH + '/palette_instance.sh'
+    path = ANSIBLE_PATH + '/palette_cloud.sh'
     cmd = 'cd {0};/usr/bin/sudo {1} {2} {3} {4} "{5}" "{6}" "{7}" "{8}" "{9}"'\
             .format(\
             ANSIBLE_PATH,
