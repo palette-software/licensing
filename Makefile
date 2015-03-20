@@ -1,3 +1,5 @@
+export PYTHONPATH=.
+
 include pylint.mk
 PEM := ~/.ssh/PaletteStandardKeyPair2014-02-16.pem
 URL := ubuntu@licensing.palette-software.com

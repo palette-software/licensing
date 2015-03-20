@@ -2,7 +2,7 @@ import logging
 
 from stage import Stage
 from system import System
-from utils import to_localtime, server_name
+from utils import to_localtime
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 
 logger = logging.getLogger('licensing')

@@ -387,9 +387,15 @@ class BuyRequestApplication(GenericWSGIApplication):
 
         logger.info('Processing Buy get request info for {0}'.format(key))
 
+        try:
+            # This should only fail in testing, where there is no op.
+            opportunity_name = SalesforceAPI.get_opportunity_name(entry)
+        except StandardError:
+            opportunity_name = 'UNKNOWN'
+
         SlackAPI.notify('Buy browse event from Opportunity: '
                 '{0} ({1}) - Type: {2}'.format(
-                SalesforceAPI.get_opportunity_name(entry),
+                opportunity_name,
                 entry.email,
                 entry.hosting_type))
 
