@@ -130,6 +130,45 @@ class HelloApplication(GenericWSGIApplication):
         return str(datetime.now())
 
 
+class LicenseApplication(GenericWSGIApplication):
+    @required_parameters('system-id', 'license-key',
+                         'license-type', 'license-quantity')
+    def service_POST(self, req):
+        """ Handle a Trial Registration
+        """
+        key = req.params['license-key']
+        entry = License.get_by_key(key)
+        if entry is None:
+            logger.error('Invalid license key: ' + key)
+            raise exc.HTTPNotFound()
+
+        system_id = req.params['system-id']
+        if entry.system_id and entry.system_id != system_id:
+            logger.error('System id from request {1} doesnt match DB {2}'\
+                         .format(key, system_id, entry.system_id))
+        entry.system_id = system_id
+
+        license_type = req.params['license-type']
+        if entry.type and entry.type != license_type:
+            logger.error('License type from request {1} doesnt match DB {2}'\
+                         .format(key, license_type, entry.type))
+        entry.type = license_type
+
+        license_quantity = req.params_getint('license-quantity', default=0)
+        if entry.n and entry.n != license_quantity:
+            logger.error('License quantity {1} doesn\'t match DB {2}'\
+                         .format(key, license_quantity, entry.n))
+        entry.n = license_quantity
+
+        entry.contact_time = datetime.utcnow()
+        session = get_session()
+        session.commit()
+
+        return {'trial': entry.trial,
+                'stage': Stage.get_by_id(entry.stageid).name,
+                'expiration-time': str(entry.expiration_time)}
+
+
 TRIAL_FIELDS = {
     'fname':'firstname', 'lname':'lastname',
     'email':'email',
@@ -482,7 +521,7 @@ logger.addHandler(ch)
 
 router = Router()
 router.add_route(r'/hello\Z', HelloApplication())
-router.add_route(r'/license\Z', TrialStartApplication())
+router.add_route(r'/license\Z', LicenseApplication())
 router.add_route(r'/support\Z', SupportApplication())
 router.add_route(r'/trial-expired\Z', BuyRequestApplication())
 router.add_route(r'/license-expired\Z', BuyRequestApplication())
@@ -491,6 +530,7 @@ router.add_route(r'/buy\Z', BuyRequestApplication())
 router.add_route(r'/api/trial\Z', TrialRequestApplication())
 router.add_route(r'/api/trial-start\Z', TrialStartApplication())
 
+# deprecated
 router.add_route(r'/api/trial_register\Z', TrialRegisterApplication())
 router.add_route(r'/api/buy_request', BuyRequestApplication())
 
