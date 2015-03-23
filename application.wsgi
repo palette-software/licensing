@@ -164,7 +164,8 @@ class LicenseApplication(GenericWSGIApplication):
         session = get_session()
         session.commit()
 
-        return {'trial': entry.trial,
+        return {'id': entry.id,
+                'trial': entry.trial,
                 'stage': Stage.get_by_id(entry.stageid).name,
                 'expiration-time': str(entry.expiration_time)}
 
@@ -367,7 +368,8 @@ class TrialStartApplication(GenericWSGIApplication):
             entry.contact_time = datetime.utcnow()
             session.commit()
 
-        return {'trial': entry.trial,
+        return {'id': entry.id,
+                'trial': entry.trial,
                 'stage': Stage.get_by_id(entry.stageid).name,
                 'expiration-time': str(entry.expiration_time)}
 
