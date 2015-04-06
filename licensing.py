@@ -63,6 +63,7 @@ class License(Base):
     phone = Column(String)
     admin_role = Column(String)
     promo_code = Column(String)
+    stripeid = Column(String)
 
     # AWS, VMWare or Palette Cloud
     hosting_type = Column(String)
@@ -70,7 +71,7 @@ class License(Base):
     aws_zone = Column(String)
 
     # Alternate biling contact
-    alt_billing = Column(Boolean, default=False)
+    #alt_billing = Column(Boolean, default=False)
     billing_fn = Column(String)
     billing_ln = Column(String)
     billing_email = Column(String)
@@ -84,7 +85,7 @@ class License(Base):
     billing_zip = Column(String)
     billing_country = Column(String)
 
-    amount = Column(Numeric(8, 2))
+    #amount = Column(Numeric(8, 2))
 
     access_key = Column(String)
     secret_key = Column(String)
@@ -127,5 +128,3 @@ class License(Base):
         if expiration is None:
             row.expiration_time = expiration
         session.commit()
-
-

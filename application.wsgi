@@ -27,6 +27,10 @@ from slack_api import SlackAPI
 from ansible_api import AnsibleAPI
 from boto_api import BotoAPI
 
+import stripe
+stripe.api_key = 'sk_test_ynEoVFrJuhuZ2cVmhCu0ePU4'
+#stripe.api_key = 'sk_live_VQnPZ5WlUY0hgbYv5KsGUM80'
+
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
 
 def time_from_today(hours=0, days=0, months=0):
@@ -38,6 +42,12 @@ def kvp(key, value):
         return str(key) + '=' + urllib.quote(str(value))
     else:
         return str(key) + '='
+
+def dict_to_qs(data):
+    qstr = '&'.join([kvp(k, v) for k, v in data.iteritems()])
+    if not qstr:
+        return ''
+    return '?' + qstr
 
 def translate_values(source, entry, fields):
     """Convert fields values to the appropriate values in the entry."""
@@ -89,7 +99,6 @@ def populate_buy_email_data(entry):
                   'phone':entry.phone,
                   'org':entry.organization,
                   'hosting_type':entry.hosting_type,
-                  'amount':entry.amount,
                   'billing_address_line1':entry.billing_address_line1,
                   'billing_address_line2':entry.billing_address_line2,
                   'billing_city':entry.billing_city,
@@ -507,6 +516,167 @@ class BuyRequestApplication(GenericWSGIApplication):
 
         logger.info('Buy request success for {0}'.format(key))
 
+
+# Buy Form -> Database mapping
+BUY_F2DB_FIELDS = {'fname-yui_3_10_1_1_1389902554996_14617':'firstname',
+                   'lname-yui_3_10_1_1_1389902554996_14617':'lastname',
+                   'text-yui_3_17_2_1_1426969180342_32971-field':'key',
+                   'email-yui_3_10_1_1_1389902554996_14932-field': 'email',
+                   'text-yui_3_10_1_1_1389902554996_16499-field': 'website',
+                   'areacode-yui_3_17_2_1_1426969180342_43961': 'phone1',
+                   'prefix-yui_3_17_2_1_1426969180342_43961': 'phone2',
+                   'line-yui_3_17_2_1_1426969180342_43961': 'phone3',
+                   'text-yui_3_17_2_1_1428080829349_25557-field': 'promo_code'}
+
+# Buy Database -> Form mapping
+BUY_DB2F_FIELDS = {v: k for k, v in BUY_F2DB_FIELDS.items()}
+
+# Buy fields to fill in on a GET request
+BUY_GET_FIELDS = ['firstname', 'lastname', 'key', 'email',
+                  'website', 'phone', 'promo_code']
+
+class Buy2RequestApplication(GenericWSGIApplication):
+    """ Class that Handles get/post methods for the palette buy url
+    """
+    REDIRECT_URL = 'http://www.palette-software.com/subscribe-thank-you'
+
+    def translate_POST(self, req, entry):
+        # pylint: disable=invalid-name
+        fname = req.POST.getall('fname')
+        lname = req.POST.getall('lname')
+        entry.firstname = fname[0]
+        entry.lastname = lname[0]
+        entry.billing_fn = fname[1]
+        entry.billing_ln = lname[1]
+        entry.email = req.POST['email']
+        entry.website = req.POST['text-yui_3_10_1_1_1389902554996_16499-field']
+        areacode = req.POST['areacode-yui_3_17_2_1_1426969180342_43961']
+        prefix = req.POST['prefix-yui_3_17_2_1_1426969180342_43961']
+        line = req.POST['line-yui_3_17_2_1_1426969180342_43961']
+        entry.phone = areacode + '-' + prefix + '-' + line
+        entry.billing_address_line1 = req.POST['address']
+        entry.billing_address_line2 = req.POST['address2']
+        entry.billing_city = req.POST['city']
+        entry.billing_state = req.POST['state']
+        entry.billing_zip = req.POST['zipcode']
+        entry.billing_country = req.POST['country']
+        coupon = req.POST['text-yui_3_17_2_1_1428080829349_25557-field']
+        entry.promo_code = coupon
+
+    def service_GET(self, req):
+        """ Handle get request which looks up the key and redirects to a
+            URL to buy with the info pre-populated on the form
+            NOTE: never fail - always redirect to the buy page.
+        """
+        buy_url = System.get_by_key('BUY-URL')
+
+        key = req.params_get('key')
+        location = buy_url + '?' + BUY_DB2F_FIELDS['key'] + '=' + key
+
+        entry = License.get_by_key(key)
+        if entry is None:
+            logger.error('Buy request key count not found :' + key)
+            raise exc.HTTPTemporaryRedirect(location=location)
+
+        logger.info('Processing Buy get request info for ' + key)
+
+        data = {}
+        for field in BUY_GET_FIELDS:
+            if field == 'phone':
+                if not entry.phone:
+                    continue
+                tokens = entry.phone.split('-')
+                if len(tokens) == 4:
+                    tokens.pop(0) # ignore country if present
+                elif len(tokens) != 3:
+                    logger.error('Invalid phone # found, key: ' + key)
+                    continue
+                data[BUY_DB2F_FIELDS['phone1']] = tokens.pop(0)
+                data[BUY_DB2F_FIELDS['phone2']] = tokens.pop(0)
+                data[BUY_DB2F_FIELDS['phone3']] = tokens.pop(0)
+            else:
+                data[BUY_DB2F_FIELDS[field]] = getattr(entry, field)
+
+        location = buy_url + dict_to_qs(data)
+        raise exc.HTTPTemporaryRedirect(location=location)
+
+    @required_parameters('stripeToken')
+    def service_POST(self, req):
+        """ Handle a Buy Request
+        """
+        # key name and id are the same.
+        key = req.params_get(BUY_DB2F_FIELDS['key'])
+        entry = License.get_by_key(key)
+        if entry is None:
+            msg = "Buy request POST failed for '{1}' : {2}"\
+                .format(key, str(req.POST))
+            logger.error(msg)
+            SlackAPI.notify(msg)
+            # FIXME: re-route to a custom error page saying contact us.
+            raise exc.HTTPNotFound()
+
+        logger.info('Processing Buy Post request for ' + key)
+
+        try:
+            self.translate_POST(req, entry)
+        except StandardError, ex:
+            logger.error(key + ': ' + str(ex))
+            raise exc.HTTPBadRequest()
+
+        # first we charge them...
+        token = req.POST['stripeToken']
+        if entry.promo_code:
+            customer = stripe.Customer.create(source=token,
+                                              plan='MONTHLY',
+                                              coupon=entry.promo_code,
+                                              email = entry.email)
+        else:
+            customer = stripe.Customer.create(source=token,
+                                              plan='MONTHLY',
+                                              email=entry.email)
+        entry.stripeid = customer.id
+
+        entry.expiration_time = time_from_today(
+            months=int(System.get_by_key('BUY-EXPIRATION-MONTHS')))
+        entry.license_start_time = datetime.utcnow()
+        entry.stageid = Stage.get_by_key('STAGE-CLOSED-WON').id
+        session = get_session()
+        session.commit()
+
+        # update the opportunity
+        SalesforceAPI.update_contact(entry)
+        SalesforceAPI.update_opportunity(entry)
+
+        # subscribe the user to the trial workflow if not already
+        SendwithusAPI.subscribe_user(
+                      System.get_by_key('SENDWITHUS-CLOSED-WON-ID'),
+                      'hello@palette-software.com',
+                      entry.email,
+                      populate_email_data(entry))
+
+        SendwithusAPI.send_message(
+                      System.get_by_key('SENDWITHUS-BUY-NOTIFICATION-ID'),
+                      'licensing@palette-software.com',
+                      'hello@palette-software.com',
+                      populate_buy_email_data(entry))
+
+        try:
+            # This should only fail in testing, where there is no op.
+            opportunity_name = SalesforceAPI.get_opportunity_name(entry)
+        except StandardError:
+            opportunity_name = 'UNKNOWN'
+
+        SlackAPI.notify('Buy request Opportunity: {0} ({1}) - Type: {2}'\
+                        .format(opportunity_name,
+                                entry.email,
+                                entry.hosting_type))
+
+        logger.info('Buy request succeeded for {0}'.format(key))
+
+        # use 302 here so that the browswer redirects with a GET request.
+        return exc.HTTPFound(location=self.REDIRECT_URL)
+
+
 # pylint: disable=invalid-name
 database = DATABASE
 create_engine(database, echo=False, pool_size=20, max_overflow=30)
@@ -522,14 +692,23 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 router = Router()
+# used to test connectivity by the VM - particularly in the setup page.
 router.add_route(r'/hello\Z', HelloApplication())
+# license verify by the conductor
 router.add_route(r'/license\Z', LicenseApplication())
+# support application requst
 router.add_route(r'/support\Z', SupportApplication())
+# UX redirects for expiration
 router.add_route(r'/trial-expired\Z', BuyRequestApplication())
 router.add_route(r'/license-expired\Z', BuyRequestApplication())
+# GET redirects for the BUY button and POST handler
 router.add_route(r'/buy\Z', BuyRequestApplication())
+# FIXME
+router.add_route(r'/buy2\Z', Buy2RequestApplication())
 
+# submit (POST) handler for the website /trial form.
 router.add_route(r'/api/trial\Z', TrialRequestApplication())
+# called when the initial setup page is completed.
 router.add_route(r'/api/trial-start\Z', TrialStartApplication())
 
 # deprecated
