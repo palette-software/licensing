@@ -35,7 +35,7 @@ class System(Base, BaseMixin):
     {'key':'BUY-EXPIRATION-MONTHS',
      'value':'12'},
     {'key':'BUY-URL',
-     'value':'https://palettesoftware.wufoo.com/forms/buy-palette/def'},
+     'value':'https://www.palette-software.com/subscribe'},
     {'key':'BAD-STAGE-URL',
      'value':'http://palette-software.com/'},
     {'key':'LICENSE-CHECK-INTERVAL',

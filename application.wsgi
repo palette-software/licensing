@@ -629,7 +629,7 @@ class Buy2RequestApplication(GenericWSGIApplication):
             customer = stripe.Customer.create(source=token,
                                               plan='MONTHLY',
                                               coupon=entry.promo_code,
-                                              email = entry.email)
+                                              email=entry.email)
         else:
             customer = stripe.Customer.create(source=token,
                                               plan='MONTHLY',
