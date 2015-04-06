@@ -23,7 +23,7 @@ Package Setup and configuration
 sudo apt-get install -y autossh
 autossh -N -L 54321:localhost:5432 -i ~/.ssh/PaletteStandardKeyPair2014-02-16.pem ubuntu@licensing.palette-software.com
 
-sudo pip install sendwithus simple-salesforce
+sudo pip install sendwithus simple-salesforce stripe
 
 Salesforce Configuration Security Token Setup
 ---------------------------------------------

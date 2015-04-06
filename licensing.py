@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from datetime import datetime
 from akiri.framework.sqlalchemy import Base, get_session
 
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, func
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, func, Numeric
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -35,7 +35,7 @@ class License(Base):
     contact_time = Column(DateTime)
 
     # Trial or Not
-    trial = Column(Boolean, nullable=False)
+    trial = Column(Boolean, nullable=False) # DEPRECATED
 
     # Expiration date/time of this stage
     expiration_time = Column(DateTime, nullable=False)
@@ -71,7 +71,7 @@ class License(Base):
     aws_zone = Column(String)
 
     # Alternate biling contact
-    #alt_billing = Column(Boolean, default=False)
+    alt_billing = Column(Boolean, default=False) #REMOVE
     billing_fn = Column(String)
     billing_ln = Column(String)
     billing_email = Column(String)
@@ -85,7 +85,7 @@ class License(Base):
     billing_zip = Column(String)
     billing_country = Column(String)
 
-    #amount = Column(Numeric(8, 2))
+    amount = Column(Numeric(8, 2)) #REMOVE
 
     access_key = Column(String)
     secret_key = Column(String)

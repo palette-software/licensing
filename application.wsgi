@@ -28,8 +28,8 @@ from ansible_api import AnsibleAPI
 from boto_api import BotoAPI
 
 import stripe
-stripe.api_key = 'sk_test_ynEoVFrJuhuZ2cVmhCu0ePU4'
-#stripe.api_key = 'sk_live_VQnPZ5WlUY0hgbYv5KsGUM80'
+#stripe.api_key = 'sk_test_ynEoVFrJuhuZ2cVmhCu0ePU4'
+stripe.api_key = 'sk_live_VQnPZ5WlUY0hgbYv5KsGUM80'
 
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
 
@@ -383,140 +383,6 @@ class TrialStartApplication(GenericWSGIApplication):
                 'expiration-time': str(entry.expiration_time)}
 
 
-class BuyRequestApplication(GenericWSGIApplication):
-    """ Class that Handles get/post methods for the palette buy url
-    """
-
-    # field mapping between request parameters and entity parameters
-    # on the buy form
-    BUY_FIELDS = {'Field3':'firstname',
-                  'Field4':'lastname',
-                  'Field6':'website',
-                  'Field5':'email',
-                  'Field21':'phone',
-                  'Field22':'palette_type',
-                  'Field8':'license_type',
-                  'Field9':'license_cap',
-                  'Field13':'billing_address_line1',
-                  'Field14':'billing_address_line2',
-                  'Field15':'billing_city',
-                  'Field16':'billing_state',
-                  'Field17':'billing_zip',
-                  'Field18':'billing_country',
-                  'Field330':'amount'}
-
-    # additional mapping when alt_billing is set
-    ALT_BILLING_FIELDS = {'Field11':'billing_fn',
-                          'Field12':'billing_ln',
-                          'Field20':'billing_email',
-                          'Field19':'billing_phone'}
-
-    NAMED_USER_TYPE = 'Named-user'
-    CORE_USER_TYPE = 'Core'
-
-    def calculate_price(self, count, license_type):
-        val = 0
-        if license_type == BuyRequestApplication.NAMED_USER_TYPE:
-            val = int(System.get_by_key('USER-PRICE')) * count
-        elif license_type == BuyRequestApplication.CORE_USER_TYPE:
-            val = int(System.get_by_key('CORE-PRICE')) * count
-        return Decimal(val)
-
-    def service_GET(self, req):
-        """ Handle get request which looks up the key and redirects to a
-            URL to buy with the info pre-populated on the form
-        """
-        key = req.params_get('key')
-        entry = License.get_by_key(key)
-        if entry is None:
-            logger.error('Buy request get count not find {0}'.format(key))
-            raise exc.HTTPNotFound()
-
-        #if entry.stage is not config.SF_STAGE_TRIAL_STARTED:
-        #    raise exc.HTTPTemporaryRedirect(location=config.BAD_STAGE_URL)
-
-        logger.info('Processing Buy get request info for {0}'.format(key))
-
-        try:
-            # This should only fail in testing, where there is no op.
-            opportunity_name = SalesforceAPI.get_opportunity_name(entry)
-        except StandardError:
-            opportunity_name = 'UNKNOWN'
-
-        SlackAPI.notify('Buy browse event from Opportunity: '
-                '{0} ({1}) - Type: {2}'.format(
-                opportunity_name,
-                entry.email,
-                entry.hosting_type))
-
-        fields = {'field7':entry.key, 'field3':entry.firstname,
-                  'field4':entry.lastname, 'field5':entry.email,
-                  'field6':entry.website, 'field21':entry.phone}
-        url_items = [kvp(k, v) for k, v in fields.iteritems()]
-        url = '&'.join(url_items)
-        location = '{0}/{1}'.format(System.get_by_key('BUY-URL'), url)
-        raise exc.HTTPTemporaryRedirect(location=location)
-
-    @required_parameters('Field3', 'Field4', 'Field6', 'Field5', 'Field21',
-                         'Field22',
-                         'Field13', 'Field14', 'Field15', 'Field16',
-                         'Field17', 'Field18', 'Field225',
-                         'Field11', 'Field12', 'Field20', 'Field19',
-                         'Field7')
-    def service_POST(self, req):
-        """ Handle a Buy Request
-        """
-        key = req.params['Field7']
-        entry = License.get_by_key(key)
-        if entry is None:
-            logger.error('Buy request post could not find {0}'.format(key))
-            raise exc.HTTPNotFound()
-
-        #if entry.stage is not config.SF_STAGE_TRIAL_STARTED:
-        #    raise exc.HTTPTemporaryRedirect(location=config.BAD_STAGE_URL)
-
-        logger.info('Processing Buy Post request for {0}'.format(key))
-
-        translate_values(req.params, entry,
-                         BuyRequestApplication.BUY_FIELDS)
-        translate_values(req.params, entry,
-                         BuyRequestApplication.ALT_BILLING_FIELDS)
-
-        if req.params['Field225'] == 'Yes! Let me tell you more!':
-            entry.alt_billing = True
-
-        entry.expiration_time = time_from_today(
-            months=int(System.get_by_key('BUY-EXPIRATION-MONTHS')))
-        entry.license_start_time = datetime.utcnow()
-        entry.stageid = Stage.get_by_key('STAGE-CLOSED-WON').id
-        session = get_session()
-        session.commit()
-
-        # update the opportunity
-        SalesforceAPI.update_contact(entry)
-        SalesforceAPI.update_opportunity(entry)
-        # subscribe the user to the trial workflow if not already
-        SendwithusAPI.subscribe_user(
-                      System.get_by_key('SENDWITHUS-CLOSED-WON-ID'),
-                      'hello@palette-software.com',
-                      entry.email,
-                      populate_email_data(entry))
-
-        SendwithusAPI.send_message(
-                      System.get_by_key('SENDWITHUS-BUY-NOTIFICATION-ID'),
-                      'licensing@palette-software.com',
-                      'hello@palette-software.com',
-                      populate_buy_email_data(entry))
-
-        SlackAPI.notify('Buy request Opportunity: '
-                '{0} ({1}) - Type: {2}'.format(\
-                SalesforceAPI.get_opportunity_name(entry),
-                entry.email,
-                entry.hosting_type))
-
-        logger.info('Buy request success for {0}'.format(key))
-
-
 # Buy Form -> Database mapping
 BUY_F2DB_FIELDS = {'fname-yui_3_10_1_1_1389902554996_14617':'firstname',
                    'lname-yui_3_10_1_1_1389902554996_14617':'lastname',
@@ -575,7 +441,7 @@ class Buy2RequestApplication(GenericWSGIApplication):
 
         entry = License.get_by_key(key)
         if entry is None:
-            logger.error('Buy request key count not found :' + key)
+            logger.error('Buy request key not found:' + key)
             raise exc.HTTPTemporaryRedirect(location=location)
 
         logger.info('Processing Buy get request info for ' + key)
@@ -702,9 +568,7 @@ router.add_route(r'/support\Z', SupportApplication())
 router.add_route(r'/trial-expired\Z', BuyRequestApplication())
 router.add_route(r'/license-expired\Z', BuyRequestApplication())
 # GET redirects for the BUY button and POST handler
-router.add_route(r'/buy\Z', BuyRequestApplication())
-# FIXME
-router.add_route(r'/buy2\Z', Buy2RequestApplication())
+router.add_route(r'/buy\Z', Buy2RequestApplication())
 
 # submit (POST) handler for the website /trial form.
 router.add_route(r'/api/trial\Z', TrialRequestApplication())
