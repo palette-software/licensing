@@ -7,7 +7,6 @@ from dateutil.relativedelta import relativedelta
 from webob import exc
 import uuid
 import urllib
-from decimal import Decimal
 import logging
 
 from akiri.framework import GenericWSGIApplication
@@ -565,8 +564,8 @@ router.add_route(r'/license\Z', LicenseApplication())
 # support application requst
 router.add_route(r'/support\Z', SupportApplication())
 # UX redirects for expiration
-router.add_route(r'/trial-expired\Z', BuyRequestApplication())
-router.add_route(r'/license-expired\Z', BuyRequestApplication())
+router.add_route(r'/trial-expired\Z', Buy2RequestApplication())
+router.add_route(r'/license-expired\Z', Buy2RequestApplication())
 # GET redirects for the BUY button and POST handler
 router.add_route(r'/buy\Z', Buy2RequestApplication())
 
@@ -574,10 +573,6 @@ router.add_route(r'/buy\Z', Buy2RequestApplication())
 router.add_route(r'/api/trial\Z', TrialRequestApplication())
 # called when the initial setup page is completed.
 router.add_route(r'/api/trial-start\Z', TrialStartApplication())
-
-# deprecated
-router.add_route(r'/api/trial_register\Z', TrialRegisterApplication())
-router.add_route(r'/api/buy_request', BuyRequestApplication())
 
 application = SessionMiddleware(app=router)
 
