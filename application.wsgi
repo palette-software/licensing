@@ -173,7 +173,7 @@ class LicenseApplication(GenericWSGIApplication):
         session.commit()
 
         return {'id': entry.id,
-                'trial': entry.trial,
+                'trial': entry.istrial(),
                 'stage': Stage.get_by_id(entry.stageid).name,
                 'expiration-time': str(entry.expiration_time)}
 
@@ -207,7 +207,6 @@ class TrialRequestApplication(GenericWSGIApplication):
         entry.expiration_time = time_from_today(
             days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
         entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
-        entry.trial = True #FIXME
         entry.website = get_netloc(entry.website).lower()
         entry.organization = server_name(entry.website)
         entry.subdomain = get_unique_name(hostname_only(entry.organization))
@@ -315,7 +314,7 @@ class TrialRegisterApplication(GenericWSGIApplication):
         logger.info('Trial Registration for key {0} success. Expiration {1}'\
               .format(key, entry.expiration_time))
 
-        return {'trial': True,
+        return {'trial': entry.istrial(),
                 'stage': Stage.get_by_id(entry.stageid).name,
                 'expiration-time': str(entry.expiration_time)}
 
@@ -328,6 +327,7 @@ class TrialStartApplication(GenericWSGIApplication):
         key = req.params['license-key']
         entry = License.get_by_key(key)
         if entry is None:
+            logger.error('Invalid trial start key: ' + key)
             raise exc.HTTPNotFound()
 
         #if entry.stage is not config.SF_STAGE_TRIAL_REGISTERED:
@@ -378,7 +378,7 @@ class TrialStartApplication(GenericWSGIApplication):
             session.commit()
 
         return {'id': entry.id,
-                'trial': entry.trial,
+                'trial': entry.istrial(),
                 'stage': Stage.get_by_id(entry.stageid).name,
                 'expiration-time': str(entry.expiration_time)}
 

@@ -53,3 +53,11 @@ class Stage(Base, BaseMixin):
             return session.query(Stage).filter(Stage.id == stageid).one()
         except NoResultFound:
             return None
+
+    @classmethod
+    def get_dict(cls):
+        data = {}
+        session = get_session()
+        for entry in session.query(Stage).all():
+            data[entry.key] = entry.name
+        return data
