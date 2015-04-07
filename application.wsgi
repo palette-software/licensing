@@ -326,6 +326,7 @@ class TrialStartApplication(GenericWSGIApplication):
         key = req.params['license-key']
         entry = License.get_by_key(key)
         if entry is None:
+            logger.error('Invalid trial start key: ' + key)
             raise exc.HTTPNotFound()
 
         #if entry.stage is not config.SF_STAGE_TRIAL_REGISTERED:
