@@ -3,8 +3,9 @@ from __future__ import absolute_import
 from datetime import datetime
 from akiri.framework.sqlalchemy import Base, get_session
 
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, func, Numeric
+from sqlalchemy import Column, String, Integer, DateTime, func
 from sqlalchemy.schema import ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm.exc import NoResultFound
 
 class License(Base):
@@ -33,9 +34,6 @@ class License(Base):
 
     # Last connection from Palette Server to licensing
     contact_time = Column(DateTime)
-
-    # Trial or Not
-    trial = Column(Boolean, nullable=False) # DEPRECATED
 
     # Expiration date/time of this stage
     expiration_time = Column(DateTime, nullable=False)
@@ -71,7 +69,6 @@ class License(Base):
     aws_zone = Column(String)
 
     # Alternate biling contact
-    alt_billing = Column(Boolean, default=False) #REMOVE
     billing_fn = Column(String)
     billing_ln = Column(String)
     billing_email = Column(String)
@@ -85,14 +82,20 @@ class License(Base):
     billing_zip = Column(String)
     billing_country = Column(String)
 
-    amount = Column(Numeric(8, 2)) #REMOVE
-
     access_key = Column(String)
     secret_key = Column(String)
 
     creation_time = Column(DateTime, server_default=func.now())
     last_update = Column(DateTime, default=datetime.utcnow(),
                                     onupdate=datetime.utcnow())
+
+    stage = relationship('Stage')
+
+    # FIXME: rename
+    def istrial(self):
+        if not self.stage:
+            return True
+        return not self.stage.key == 'STAGE-CLOSED-WON'
 
     @classmethod
     def get_by_name(cls, name):
