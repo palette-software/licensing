@@ -59,7 +59,7 @@ POLICY = """{{
 }}
 """
 
-BUCKET_PREFIX = 'palette-software-production-'
+BUCKET_PREFIX = 'palette-software-'
 
 class BotoAPI(object):
     @classmethod

@@ -7,6 +7,8 @@ from akiri.framework.sqlalchemy import get_session
 from utils import str2bool
 from system import System
 from sendwithus_api import SendwithusAPI
+from slack_api import SlackAPI
+from salesforce_api import SalesforceAPI
 
 logger = logging.getLogger('licensing')
 
@@ -18,14 +20,16 @@ def run_process(entry, success_mailid, fail_mailid):
 
     zone = System.get_by_key('PALETTECLOUD-DNS-ZONE')
 
-    path = ANSIBLE_PATH + '/palette_cloud.sh'
-    cmd = 'cd {0};/usr/bin/sudo {1} {2} {3} {4} "{5}" "{6}" "{7}" "{8}" "{9}"'\
+    path = ANSIBLE_PATH + '/palette_pro.sh'
+    bucket_name = 'palette-software-{0}'.format(entry.subdomain)
+    cmd = 'cd {0};/usr/bin/sudo {1} {2} {3} {4} "{5}" "{6}" '\
+          '"{7}" "{8}" "{9}" "{10}"'\
             .format(\
             ANSIBLE_PATH,
             path,
             entry.subdomain,
-            REGION, zone, entry.name, 'Palette Online',
-            entry.access_key, entry.secret_key, entry.key)
+            REGION, zone, entry.name, 'Palette Pro',
+            entry.access_key, entry.secret_key, entry.key, bucket_name)
     logger.info('Running %s', cmd)
 
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
@@ -33,7 +37,7 @@ def run_process(entry, success_mailid, fail_mailid):
                                  shell=True)
     out, err = proc.communicate()
     if proc.returncode != 0:
-        logger.error('Problem launching a Palette Cloud Instance {0} code {1}'\
+        logger.error('Problem launching a Palette Pro Instance {0} code {1}'\
                     .format(entry.subdomain, proc.returncode))
         logger.error('out %s err %s', out, err)
 
@@ -44,12 +48,17 @@ def run_process(entry, success_mailid, fail_mailid):
                     'firstname':entry.firstname,
                     'lastname':entry.lastname})
 
-        SendwithusAPI.send_message(fail_mailid,
-                    'hello@palette-software.com',
-                     entry.email, data={
-                    'subdomain':entry.subdomain,
-                    'firstname':entry.firstname,
-                    'lastname':entry.lastname})
+        SlackAPI.notify('Failed to launch Palette Pro Instance. '
+                'Opportunity: {0}'.format(
+                SalesforceAPI.get_opportunity_name(entry)))
+
+        #SendwithusAPI.send_message(fail_mailid,
+        #            'hello@palette-software.com',
+        #             entry.email, data={
+        #            'subdomain':entry.subdomain,
+        #            'firstname':entry.firstname,
+        #            'lastname':entry.lastname})
+
     else:
         logger.info('Succesfully launched instance {0}'.format(entry.subdomain))
         logger.error('out %s err %s', out, err)
@@ -67,6 +76,10 @@ def run_process(entry, success_mailid, fail_mailid):
                     'hello@palette-software.com',
                     entry.email,
                     data=email_data)
+
+        SlackAPI.notify('Succesfully launched Palette Pro Instance. '
+                'Opportunity: {0}'.format(
+                SalesforceAPI.get_opportunity_name(entry)))
 
 class AnsibleAPI(object):
     @classmethod

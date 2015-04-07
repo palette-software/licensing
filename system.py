@@ -47,7 +47,7 @@ class System(Base, BaseMixin):
     {'key':'SEND-SLACK',
      'value':'true'},
     {'key':'SLACK-CHANNEL',
-     'value':'customer-interactions'},
+     'value':'customer-try-buy'},
     {'key':'CREATE-INSTANCE',
      'value':'true'},
     {'key':'SENDWITHUS-APIKEY',

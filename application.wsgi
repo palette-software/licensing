@@ -212,12 +212,13 @@ class TrialRequestApplication(GenericWSGIApplication):
         entry.organization = server_name(entry.website)
         entry.subdomain = get_unique_name(hostname_only(entry.organization))
         entry.name = entry.subdomain
-        print '{0} {1} {2} {3}'.format(entry.website, entry.organization,
-                                       entry.subdomain, entry.name)
+        logger.info('{0} {1} {2} {3}'.format(entry.website, entry.organization,
+                                       entry.subdomain, entry.name))
 
-        entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
-        entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
         entry.registration_start_time = datetime.utcnow()
+        if entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
+            entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
+            entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
 
         session = get_session()
         session.add(entry)

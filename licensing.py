@@ -53,7 +53,7 @@ class License(Base):
     firstname = Column(String, nullable=False)
     lastname = Column(String, nullable=False)
 
-    # used for Palette Cloud
+    # used for Palette Pro
     subdomain = Column(String)
 
     # customer info
@@ -65,7 +65,7 @@ class License(Base):
     promo_code = Column(String)
     stripeid = Column(String)
 
-    # AWS, VMWare or Palette Cloud
+    # AWS, VMWare or Palette Pro
     hosting_type = Column(String)
     # AWS availability zone
     aws_zone = Column(String)
