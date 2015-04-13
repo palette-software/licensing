@@ -200,21 +200,28 @@ class SalesforceAPI(object):
                         data.key, Stage.get_by_id(data.stageid).name)
 
             oppid = opp['records'][0]['Id']
-            conn.Opportunity.update(oppid,
-                {'StageName':Stage.get_by_id(data.stageid).name,
-                 'CloseDate':data.expiration_time.isoformat(),
-                 'Expiration_Date__c':data.expiration_time.isoformat(),
-                 'Tableau_App_License_Type__c':data.type,
-                 'Tableau_App_License_Count__c':data.n,
-                 'System_ID__c':data.system_id,
-                 'Hosting_Type__c':data.hosting_type,
-                 'AWS_Region__c':data.aws_zone,
-                 'Palette_Cloud_subdomain__c':data.subdomain,
-                 'Promo_Code__c':data.promo_code,
-            'Trial_Request_Date_Time__c':data.registration_start_time,
-            'Trial_Registered_Date_Time__c':data.trial_start_time.isoformat(),
-            'License_Start_Date_Time__c':data.license_start_time.isoformat()
-             })
+            row = {'StageName':Stage.get_by_id(data.stageid).name,
+                    'CloseDate':data.expiration_time.isoformat(),
+                    'Expiration_Date__c':data.expiration_time.isoformat(),
+                    'Tableau_App_License_Type__c':data.type,
+                    'Tableau_App_License_Count__c':data.n,
+                    'System_ID__c':data.system_id,
+                    'Hosting_Type__c':data.hosting_type,
+                    'AWS_Region__c':data.aws_zone,
+                    'Palette_Cloud_subdomain__c':data.subdomain,
+                    'Promo_Code__c':data.promo_code}
+            if data.registration_start_time is not None:
+                row['Trial_Request_Date_Time__c'] = \
+                    data.registration_start_time.isoformat()
+            if data.trial_start_time is not None:
+                row['Trial_Registered_Date_Time__c'] = \
+                   data.trial_start_time.isoformat()
+            if data.license_start_time is not None:
+                row['License_Start_Date_Time__c'] = \
+                   data.license_start_time.isoformat()
+            conn.Opportunity.update(oppid, row)
+            return oppid
+        return None
 
     @classmethod
     def delete_opportunity(cls, data):

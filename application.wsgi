@@ -19,7 +19,7 @@ from stage import Stage
 from licensing import License
 from system import System
 from support import Support
-from utils import get_netloc, server_name, hostname_only
+from utils import get_netloc, server_name, hostname_only, domain_only
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
@@ -137,6 +137,101 @@ class HelloApplication(GenericWSGIApplication):
         # This could be tracked :).
         return str(datetime.now())
 
+REGISTER_FIELDS = {
+        'firstname':'firstname', 'lastname':'lastname',
+        'email':'email',
+}
+class RegisterApplication(GenericWSGIApplication):
+    REDIRECT_URL = 'http://www.palette-software.com/register-thank-you'
+    REGISTER_VERIFY_URL = 'https://licensing.palette-software.com/api/verify'
+
+    @required_parameters(*REGISTER_FIELDS.keys())
+    def service_POST(self, req):
+        """ Handle a Registration of a new potential trial user
+        """
+        session = get_session()
+        entry = License.get_by_email(req.params['email'])
+        if entry is not None:
+            logger.info('Re-register request for %s %s %s',
+                        entry.firstname, entry.lastname, entry.email)
+
+            entry.registration_start_time = datetime.utcnow()
+            entry.expiration_time = time_from_today(hours=24)
+            session.commit()
+        else:
+            entry = License()
+            translate_values(req.params, entry, REGISTER_FIELDS)
+            logger.info('New register request for %s %s %s',
+                        entry.firstname, entry.lastname, entry.email)
+
+            entry.key = str(uuid.uuid4())
+            entry.stageid = Stage.get_by_key('STAGE-REGISTERED-UNVERIFIED').id
+            entry.registration_start_time = datetime.utcnow()
+            entry.expiration_time = time_from_today(hours=24)
+            entry.organization = get_netloc(domain_only(entry.email)).lower()
+            session.add(entry)
+            session.commit()
+
+            # create or use an existing opportunity
+            opp_id = SalesforceAPI.new_opportunity(entry)
+
+            # notify slack
+            sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
+            SlackAPI.notify('Register Unvalidated New Opportunity: '
+                    '{0} ({1}) - Type: {2}'.format(
+                    SalesforceAPI.get_opportunity_name(entry),
+                    entry.email,
+                    sf_url))
+
+        # send the user an email to allow them to verify their email address
+        mailid = System.get_by_key('SENDWITHUS-REGISTERED-UNVERIFIED-ID')
+        url = '{0}?key={1}'.format(self.REGISTER_VERIFY_URL, entry.key)
+        SendwithusAPI.send_message(mailid,
+                                     'hello@palette-software.com',
+                                     entry.email,
+                                     {'key':entry.key,
+                                      'url':url
+                                     })
+
+        logger.info('Register unvalidated success for %s', entry.email)
+
+        # use 302 here so that the browswer redirects with a GET request.
+        return exc.HTTPFound(location=self.REDIRECT_URL)
+
+class VerifyApplication(GenericWSGIApplication):
+    REDIRECT_URL = 'http://www.palette-software.com/trial'
+
+    def service_GET(self, req):
+        """ Handle a Registration Validation of a new potential trial user
+        """
+        entry = License.get_by_key(req.params['key'])
+        if entry is None:
+            raise exc.HTTPNotFound()
+
+        session = get_session()
+        entry.stageid = Stage.get_by_key('STAGE-VERIFIED').id
+        entry.expiration_time = time_from_today(months=1)
+        session.commit()
+
+        # update existing opportunity
+        opp_id = SalesforceAPI.update_opportunity(entry)
+
+        # notify slack
+        sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
+        SlackAPI.notify('Verified a New Opportunity: '
+                '{0} ({1}) - Type: {2}'.format(
+                SalesforceAPI.get_opportunity_name(entry),
+                entry.email,
+                sf_url))
+
+        logger.info('Register verified success for %s', entry.email)
+
+        data = {'fname':entry.firstname, 'lname':entry.lastname,
+                'email':entry.email}
+
+        location = self.REDIRECT_URL + dict_to_qs(data)
+        # use 302 here so that the browswer redirects with a GET request.
+        return exc.HTTPFound(location=location)
 
 class LicenseApplication(GenericWSGIApplication):
     @required_parameters('system-id', 'license-key',
@@ -570,6 +665,10 @@ router.add_route(r'/license-expired\Z', Buy2RequestApplication())
 # GET redirects for the BUY button and POST handler
 router.add_route(r'/buy\Z', Buy2RequestApplication())
 
+# register a user into the licensing system
+router.add_route(r'/api/register\Z', RegisterApplication())
+# verify a user into the licensing system
+router.add_route(r'/api/verify\Z', VerifyApplication())
 # submit (POST) handler for the website /trial form.
 router.add_route(r'/api/trial\Z', TrialRequestApplication())
 # called when the initial setup page is completed.

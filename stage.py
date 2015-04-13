@@ -36,7 +36,11 @@ class Stage(Base, BaseMixin):
                 {'key'  : 'STAGE-UP-FOR-RENEWAL',
                  'name': 'Up For Renewal'},
                 {'key'  : 'STAGE-CLOSED-WON',
-                 'name': 'Closed Won'}]
+                 'name': 'Closed Won'},
+                {'key'  : 'STAGE-REGISTERED-UNVERIFIED',
+                 'name': 'Registered Unverified'},
+                {'key'  : 'STAGE-VERIFIED',
+                 'name': 'Verified User'}]
 
     @classmethod
     def get_by_key(cls, key):

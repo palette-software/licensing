@@ -17,7 +17,8 @@ class SendwithusAPI(object):
             email_data=data,
             sender={'address':from_address})
         if response.status_code != 200:
-            logger.error('Error subscribing user %s to %s', to_address, mailid)
+            logger.error('Error subscribing user %s to %s: %s',
+                          to_address, mailid, response.content)
 
     @classmethod
     def send_message(cls, mailid, from_address, to_address, data):
@@ -29,5 +30,5 @@ class SendwithusAPI(object):
             recipient={'address':to_address},
             sender={'address':from_address})
         if response.status_code != 200:
-            logger.error('Error sending message %s to user %s',
-                         mailid, to_address)
+            logger.error('Error sending message %s to user %s: %s',
+                         mailid, to_address, response.content)

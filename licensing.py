@@ -57,7 +57,7 @@ class License(Base):
     # customer info
     organization = Column(String)
     timezone = Column(String)
-    website = Column(String, nullable=False)
+    website = Column(String)
     phone = Column(String)
     admin_role = Column(String)
     promo_code = Column(String)
@@ -104,6 +104,15 @@ class License(Base):
             return session.query(License).filter(License.name == name).one()
         except NoResultFound:
             return None
+
+    @classmethod
+    def get_by_email(cls, email):
+        session = get_session()
+        try:
+            rows = session.query(License).filter(License.email == email).one()
+        except NoResultFound:
+            return None
+        return rows
 
     @classmethod
     def get_by_key(cls, key):
