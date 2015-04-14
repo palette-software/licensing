@@ -138,7 +138,7 @@ class HelloApplication(GenericWSGIApplication):
         return str(datetime.now())
 
 REGISTER_FIELDS = {
-        'firstname':'firstname', 'lastname':'lastname',
+        'fname':'firstname', 'lname':'lastname',
         'email':'email',
 }
 class RegisterApplication(GenericWSGIApplication):
