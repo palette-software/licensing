@@ -226,8 +226,9 @@ class VerifyApplication(GenericWSGIApplication):
 
         logger.info('Register verified success for %s', entry.email)
 
-        data = {'fname':entry.firstname, 'lname':entry.lastname,
-                'email':entry.email}
+        data = {'fname-yui_3_10_1_1_1389902554996_14617':entry.firstname,
+                'lname-yui_3_10_1_1_1389902554996_14617':entry.lastname,
+                'email-yui_3_10_1_1_1389902554996_14932-field':entry.email}
 
         location = self.REDIRECT_URL + dict_to_qs(data)
         # use 302 here so that the browswer redirects with a GET request.
