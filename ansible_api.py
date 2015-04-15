@@ -72,7 +72,7 @@ def run_process(entry, success_mailid, fail_mailid):
                   'access_key':entry.access_key,
                   'secret_key':entry.secret_key}
 
-        SendwithusAPI.subscribe_user(success_mailid,
+        SendwithusAPI.send_message(success_mailid,
                     'hello@palette-software.com',
                     entry.email,
                     data=email_data)
