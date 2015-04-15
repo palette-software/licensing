@@ -52,6 +52,14 @@ def server_name(hostname):
         parts.pop(0)
     return '.'.join(parts)
 
+def domain_only(email):
+    """ Returns the domain part of the email address
+    """
+    parts = email.split('@')
+    if len(parts) != 2:
+        return None
+    return parts[1]
+
 def get_netloc(url):
     """ Returns the network part of the URL stripping away the scheme and the
         parameters after the domain name"""

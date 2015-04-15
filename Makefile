@@ -14,6 +14,7 @@ FILES := application.wsgi \
 	boto_api.py \
 	support.py \
 	stage.py \
+        product.py \
 	system.py \
 	utils.py
 

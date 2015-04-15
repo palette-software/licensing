@@ -32,6 +32,9 @@ class License(Base):
     # Stage in try/buy workflow
     stageid = Column(Integer, ForeignKey("stage.id"))
 
+    # type of product 
+    productid = Column(Integer, ForeignKey("product.id"))
+
     # Last connection from Palette Server to licensing
     contact_time = Column(DateTime)
 
@@ -57,7 +60,7 @@ class License(Base):
     # customer info
     organization = Column(String)
     timezone = Column(String)
-    website = Column(String, nullable=False)
+    website = Column(String)
     phone = Column(String)
     admin_role = Column(String)
     promo_code = Column(String)
@@ -90,6 +93,7 @@ class License(Base):
                                     onupdate=datetime.utcnow())
 
     stage = relationship('Stage')
+    product = relationship('Product')
 
     # FIXME: rename
     def istrial(self):
@@ -104,6 +108,15 @@ class License(Base):
             return session.query(License).filter(License.name == name).one()
         except NoResultFound:
             return None
+
+    @classmethod
+    def get_by_email(cls, email):
+        session = get_session()
+        try:
+            rows = session.query(License).filter(License.email == email).one()
+        except NoResultFound:
+            return None
+        return rows
 
     @classmethod
     def get_by_key(cls, key):

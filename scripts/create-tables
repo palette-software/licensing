@@ -13,6 +13,7 @@ from akiri.framework.sqlalchemy import Base
 from licensing import License
 from support import Support
 from stage import Stage
+from product import Product
 from system import System
 # pylint: enable=unused-import
 
@@ -23,6 +24,7 @@ def main():
     engine = sqlalchemy.create_engine(DATABASE, echo=False, pool_size=20, max_overflow=50)
     Base.metadata.create_all(engine)
     Stage.populate()
+    Product.populate()
     System.populate()
 
 if __name__ == '__main__':

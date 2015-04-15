@@ -79,6 +79,10 @@ class System(Base, BaseMixin):
     {'key':'PALETTECLOUD-LAUNCH-FAIL-ID',
      'value':'dc_HBXzkSaV9p5eWCJxC2X7YN'},
     {'key':'SENDWITHUS-BUY-NOTIFICATION-ID',
+     'value':''},
+    {'key':'SENDWITHUS-REGISTERED-UNVERIFIED-ID',
+     'value':''},
+    {'key':'SENDWITHUS-REGISTERED-VERIFIED-ID',
      'value':''}
     ]
 
