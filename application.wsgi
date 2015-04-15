@@ -169,6 +169,8 @@ class RegisterApplication(GenericWSGIApplication):
             entry.registration_start_time = datetime.utcnow()
             entry.expiration_time = time_from_today(hours=24)
             entry.organization = get_netloc(domain_only(entry.email)).lower()
+            entry.subdomain = get_unique_name(hostname_only(entry.organization))
+            entry.name = entry.subdomain
             session.add(entry)
             session.commit()
 
@@ -178,7 +180,7 @@ class RegisterApplication(GenericWSGIApplication):
             # notify slack
             sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
             SlackAPI.notify('Register Unvalidated New Opportunity: '
-                    '{0} ({1}) - Type: {2}'.format(
+                    '{0} ({1}) {2}'.format(
                     SalesforceAPI.get_opportunity_name(entry),
                     entry.email,
                     sf_url))
@@ -219,7 +221,7 @@ class VerifyApplication(GenericWSGIApplication):
         # notify slack
         sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
         SlackAPI.notify('Verified a New Opportunity: '
-                '{0} ({1}) - Type: {2}'.format(
+                '{0} ({1}) {2}'.format(
                 SalesforceAPI.get_opportunity_name(entry),
                 entry.email,
                 sf_url))
@@ -228,7 +230,8 @@ class VerifyApplication(GenericWSGIApplication):
 
         data = {'fname-yui_3_10_1_1_1389902554996_14617':entry.firstname,
                 'lname-yui_3_10_1_1_1389902554996_14617':entry.lastname,
-                'email-yui_3_10_1_1_1389902554996_14932-field':entry.email}
+                'email-yui_3_10_1_1_1389902554996_14932-field':entry.email,
+                'hidden-yui_3_17_2_1_1429117178321_54646':entry.key}
 
         location = self.REDIRECT_URL + dict_to_qs(data)
         # use 302 here so that the browswer redirects with a GET request.
@@ -295,32 +298,71 @@ class TrialRequestApplication(GenericWSGIApplication):
     def service_POST(self, req):
         """ Handler for Try Palette Form Post
         """
-        entry = License()
-        translate_values(req.params, entry, self.TRIAL_FIELDS)
-        logger.info('New trial request for %s %s %s %s', entry.website,
-                    entry.firstname, entry.lastname, entry.email)
-        entry.key = str(uuid.uuid4())
-        entry.expiration_time = time_from_today(
-            days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
-        entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
-        entry.website = get_netloc(entry.website).lower()
-        entry.organization = server_name(entry.website)
-        entry.subdomain = get_unique_name(hostname_only(entry.organization))
-        entry.name = entry.subdomain
-        logger.info('{0} {1} {2} {3}'.format(entry.website, entry.organization,
-                                       entry.subdomain, entry.name))
+        key = req.params['SQF_KEY']
+        # sqf is a hidden field in the trial page
+        # if no key then the no registeration was done and
+        # the trial form was filled-in to start
+        if len(key) == 0:
+            entry = License()
+            translate_values(req.params, entry, self.TRIAL_FIELDS)
+            logger.info('New trial request for %s %s %s %s',
+                        entry.website,
+                        entry.firstname,
+                        entry.lastname,
+                        entry.email)
+            entry.key = str(uuid.uuid4())
+            entry.expiration_time = time_from_today(
+                days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
+            entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
+            entry.website = get_netloc(entry.website).lower()
+            entry.organization = get_netloc(domain_only(entry.email)).lower()
+            entry.subdomain = get_unique_name(hostname_only(entry.organization))
+            entry.name = entry.subdomain
+            logger.info('{0} {1} {2} {3}'.format(entry.website,
+                                                 entry.organization,
+                                                 entry.subdomain,
+                                                 entry.name))
 
-        entry.registration_start_time = datetime.utcnow()
-        if entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
-            entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
-            entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
+            entry.registration_start_time = datetime.utcnow()
+            if entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
+                entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
+                entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
 
-        session = get_session()
-        session.add(entry)
-        session.commit()
+            session = get_session()
+            session.add(entry)
+            session.commit()
 
-        # create or use an existing opportunity
-        opp_id = SalesforceAPI.new_opportunity(entry)
+            # create or use an existing opportunity
+            opp_id = SalesforceAPI.new_opportunity(entry)
+        else:
+            # if there was a key it means they registered before
+
+            logger.info('Key is %s', key)
+            entry = License.get_by_key(key)
+            if entry is None:
+                logger.error('Invalid license key: ' + key)
+                raise exc.HTTPNotFound()
+
+            translate_values(req.params, entry, self.TRIAL_FIELDS)
+            logger.info('New registered trial request for %s %s %s %s',
+                        entry.website,
+                        entry.firstname,
+                        entry.lastname,
+                        entry.email)
+            entry.expiration_time = time_from_today(
+                days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
+            entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
+            entry.website = get_netloc(entry.website).lower()
+            if entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
+                entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
+                entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
+
+            session = get_session()
+            session.commit()
+
+            # update the sf opportunity
+            opp_id = SalesforceAPI.update_opportunity(entry)
+
         # subscribe the user to the trial list
         if entry.hosting_type == TrialRequestApplication.AWS_HOSTING:
             mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-ID')
