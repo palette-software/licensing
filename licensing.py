@@ -32,6 +32,9 @@ class License(Base):
     # Stage in try/buy workflow
     stageid = Column(Integer, ForeignKey("stage.id"))
 
+    # type of product 
+    productid = Column(Integer, ForeignKey("product.id"))
+
     # Last connection from Palette Server to licensing
     contact_time = Column(DateTime)
 
@@ -90,6 +93,7 @@ class License(Base):
                                     onupdate=datetime.utcnow())
 
     stage = relationship('Stage')
+    product = relationship('Product')
 
     # FIXME: rename
     def istrial(self):

@@ -18,8 +18,9 @@ from akiri.framework.util import required_parameters
 from stage import Stage
 from licensing import License
 from system import System
+from product import Product
 from support import Support
-from utils import get_netloc, server_name, hostname_only, domain_only
+from utils import get_netloc, hostname_only, domain_only
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
@@ -191,7 +192,9 @@ class RegisterApplication(GenericWSGIApplication):
         SendwithusAPI.send_message(mailid,
                                      'hello@palette-software.com',
                                      entry.email,
-                                     {'key':entry.key,
+                                     {'firstname':entry.firstname,
+                                      'lastname':entry.lastname,
+                                      'key':entry.key,
                                       'url':url
                                      })
 
@@ -600,6 +603,12 @@ class Buy2RequestApplication(GenericWSGIApplication):
                 data[BUY_DB2F_FIELDS['phone3']] = tokens.pop(0)
             else:
                 data[BUY_DB2F_FIELDS[field]] = getattr(entry, field)
+
+        SlackAPI.notify('Buy Browse Event: '
+                'Key: {0}, Name: {1} ({2}), Org: {3}, Type: {4}' \
+                .format(entry.key,
+                entry.firstname + ' ' + entry.lastname, entry.email,
+                entry.organization, entry.hosting_type))
 
         location = buy_url + dict_to_qs(data)
         raise exc.HTTPTemporaryRedirect(location=location)
