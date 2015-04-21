@@ -78,8 +78,14 @@ class System(Base, BaseMixin):
      'value':''},
     {'key':'SENDWITHUS-REGISTERED-UNVERIFIED-ID',
      'value':''},
-    {'key':'SENDWITHUS-REGISTERED-VERIFIED-ID',
-     'value':''}
+    {'key':'TRIAL-REQUEST-REDIRECT-PRO-URL',
+     'value':'http://www.palette-software.com/trial-confirmation-pro'},
+    {'key':'TRIAL-REQUEST-REDIRECT-ENT-URL',
+     'value':'http://www.palette-software.com/trial-confirmation-ent'},
+    {'key':'REGISTGER-REDIRECT-URL',
+     'value':'http://www.palette-software.com/register-thank-you'},
+    {'key':'REGISTER-VERIFY-URL',
+     'value':'https://licensing.palette-software.com/api/verify'}
     ]
 
     @classmethod

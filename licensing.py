@@ -32,7 +32,7 @@ class License(Base):
     # Stage in try/buy workflow
     stageid = Column(Integer, ForeignKey("stage.id"))
 
-    # type of product 
+    # type of product
     productid = Column(Integer, ForeignKey("product.id"))
 
     # Last connection from Palette Server to licensing
