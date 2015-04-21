@@ -52,14 +52,10 @@ class System(Base, BaseMixin):
      'value':'true'},
     {'key':'SENDWITHUS-APIKEY',
      'value':''},
-    {'key':'SENDWITHUS-TRIAL-REQUESTED-ID',
-     'value':''},
-    {'key':'SENDWITHUS-TRIAL-REQUESTED-VMWARE-ID',
-     'value':'dc_wjm4uWv63GAGx7RQSAEvLF'},
-    {'key':'SENDWITHUS-TRIAL-REQUESTED-PCLOUD-ID',
+    {'key':'SENDWITHUS-TRIAL-REQUESTED-PRO-ID',
      'value':'dc_V5oNEyYqWhDKZKA39ZN8qL'},
-    {'key':'SENDWITHUS-TRIAL-REQUESTED-DONTKNOW-ID',
-     'value':'dc_HDbLsD7c9VBS9pkuwaoHJM'},
+    {'key':'SENDWITHUS-TRIAL-REQUESTED-ENT-ID',
+     'value':''},
     {'key':'SENDWITHUS-TRIAL-NOTINSTALLED-ID',
      'value':''},
     {'key':'SENDWITHUS-TRIAL-NORESPONSE-ID',
@@ -82,8 +78,14 @@ class System(Base, BaseMixin):
      'value':''},
     {'key':'SENDWITHUS-REGISTERED-UNVERIFIED-ID',
      'value':''},
-    {'key':'SENDWITHUS-REGISTERED-VERIFIED-ID',
-     'value':''}
+    {'key':'TRIAL-REQUEST-REDIRECT-PRO-URL',
+     'value':'http://www.palette-software.com/trial-confirmation-pro'},
+    {'key':'TRIAL-REQUEST-REDIRECT-ENT-URL',
+     'value':'http://www.palette-software.com/trial-confirmation-ent'},
+    {'key':'REGISTGER-REDIRECT-URL',
+     'value':'http://www.palette-software.com/register-thank-you'},
+    {'key':'REGISTER-VERIFY-URL',
+     'value':'https://licensing.palette-software.com/api/verify'}
     ]
 
     @classmethod
