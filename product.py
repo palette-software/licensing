@@ -13,18 +13,19 @@ class Product(Base, BaseMixin):
     __tablename__ = 'product'
 
     id = Column(Integer, primary_key=True)
+    key = Column(String)
     name = Column(String, nullable=False)
 
-    defaults = [{'id' : '1',
+    defaults = [{'key' : 'PALETTE-PRO',
                  'name': 'Palette Pro'},
-                {'id'  : '2',
+                {'key'  : 'PALETTE-ENT',
                  'name': 'Palette Enterprise'}]
 
     @classmethod
-    def get_by_id(cls, productid):
+    def get_by_key(cls, key):
         session = get_session()
         try:
-            return session.query(Product).filter(Product.id == productid).one()
+            return session.query(Product).filter(Product.key == key).one()
         except NoResultFound:
             return None
 

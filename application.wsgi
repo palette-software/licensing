@@ -170,6 +170,7 @@ class RegisterApplication(GenericWSGIApplication):
             entry.registration_start_time = datetime.utcnow()
             entry.expiration_time = time_from_today(hours=24)
             entry.organization = get_netloc(domain_only(entry.email)).lower()
+            entry.website = entry.organization
             entry.subdomain = get_unique_name(hostname_only(entry.organization))
             entry.name = entry.subdomain
             session.add(entry)
@@ -180,7 +181,7 @@ class RegisterApplication(GenericWSGIApplication):
 
             # notify slack
             sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
-            SlackAPI.notify('Register Unvalidated New Opportunity: '
+            SlackAPI.notify('Register Unverified New Opportunity: '
                     '{0} ({1}) {2}'.format(
                     SalesforceAPI.get_opportunity_name(entry),
                     entry.email,
@@ -283,19 +284,17 @@ class LicenseApplication(GenericWSGIApplication):
 TRIAL_FIELDS = {
     'fname':'firstname', 'lname':'lastname',
     'email':'email',
-    'text-yui_3_10_1_1_1389902554996_16499-field': 'website',
-    'radio-yui_3_17_2_1_1407117642911_45717-field':'admin_role',
     'radio-yui_3_17_2_1_1426521445942_51014-field':'hosting_type'
 }
 
 class TrialRequestApplication(GenericWSGIApplication):
 
     TRIAL_FIELDS = TRIAL_FIELDS
-    AWS_HOSTING = 'Your AWS Account with our AMI Image'
-    VMWARE_HOSTING = 'Your Data Center with our VMware Image'
-    PCLOUD_HOSTING = 'Palette Cloud in our Data Center'
+    PALETTE_PRO = 'Palette Pro'
+    PALETTE_ENT = 'Palette Enterprise'
 
-    REDIRECT_URL = 'http://www.palette-software.com/trial-confirmation'
+    REDIRECT_URL_PRO = 'http://www.palette-software.com/trial-confirmation-pro'
+    REDIRECT_URL_ENT = 'http://www.palette-software.com/trial-confirmation-ent'
 
     @required_parameters(*TRIAL_FIELDS.keys())
     def service_POST(self, req):
@@ -308,8 +307,7 @@ class TrialRequestApplication(GenericWSGIApplication):
         if len(key) == 0:
             entry = License()
             translate_values(req.params, entry, self.TRIAL_FIELDS)
-            logger.info('New trial request for %s %s %s %s',
-                        entry.website,
+            logger.info('New trial request for %s %s %s',
                         entry.firstname,
                         entry.lastname,
                         entry.email)
@@ -317,19 +315,21 @@ class TrialRequestApplication(GenericWSGIApplication):
             entry.expiration_time = time_from_today(
                 days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
             entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
-            entry.website = get_netloc(entry.website).lower()
             entry.organization = get_netloc(domain_only(entry.email)).lower()
+            entry.website = entry.organization 
             entry.subdomain = get_unique_name(hostname_only(entry.organization))
             entry.name = entry.subdomain
-            logger.info('{0} {1} {2} {3}'.format(entry.website,
-                                                 entry.organization,
+            logger.info('{0} {1} {2}'.format(entry.organization,
                                                  entry.subdomain,
                                                  entry.name))
 
             entry.registration_start_time = datetime.utcnow()
-            if entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
+            if entry.hosting_type == TrialRequestApplication.PALETTE_PRO:
+                entry.productid = Product.get_by_key('PALETTE-PRO').id
                 entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
                 entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
+            else: 
+                entry.productid = Product.get_by_key('PALETTE-ENT').id
 
             session = get_session()
             session.add(entry)
@@ -347,15 +347,13 @@ class TrialRequestApplication(GenericWSGIApplication):
                 raise exc.HTTPNotFound()
 
             translate_values(req.params, entry, self.TRIAL_FIELDS)
-            logger.info('New registered trial request for %s %s %s %s',
-                        entry.website,
+            logger.info('New registered trial request for %s %s %s',
                         entry.firstname,
                         entry.lastname,
                         entry.email)
             entry.expiration_time = time_from_today(
                 days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
             entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
-            entry.website = get_netloc(entry.website).lower()
             if entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
                 entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
                 entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
@@ -367,23 +365,25 @@ class TrialRequestApplication(GenericWSGIApplication):
             opp_id = SalesforceAPI.update_opportunity(entry)
 
         # subscribe the user to the trial list
-        if entry.hosting_type == TrialRequestApplication.AWS_HOSTING:
-            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-ID')
-        elif entry.hosting_type == TrialRequestApplication.VMWARE_HOSTING:
-            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-VMWARE-ID')
-        elif entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
-            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-PCLOUD-ID')
-        else:
-            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-DONTKNOW-ID')
-        SendwithusAPI.subscribe_user(mailid,
+        if entry.hosting_type == TrialRequestApplication.PALETTE_PRO:
+            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-PRO-ID')
+            SendwithusAPI.subscribe_user(mailid,
                                      'hello@palette-software.com',
                                      entry.email,
                                      populate_email_data(entry))
 
-        if entry.hosting_type == TrialRequestApplication.PCLOUD_HOSTING:
             AnsibleAPI.launch_instance(entry,
                      System.get_by_key('PALETTECLOUD-LAUNCH-SUCCESS-ID'),
                      System.get_by_key('PALETTECLOUD-LAUNCH-FAIL-ID'))
+            url = self.REDIRECT_URL_PRO
+
+        else:
+            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-ENT-ID')
+            SendwithusAPI.subscribe_user(mailid,
+                                     'hello@palette-software.com',
+                                     entry.email,
+                                     populate_email_data(entry))
+            url = self.REDIRECT_URL_ENT
 
         sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
         SlackAPI.notify('Trial request Opportunity: '
@@ -396,7 +396,7 @@ class TrialRequestApplication(GenericWSGIApplication):
         logger.info('Trial request success for %s %s', entry.email, entry.key)
 
         # use 302 here so that the browswer redirects with a GET request.
-        return exc.HTTPFound(location=self.REDIRECT_URL)
+        return exc.HTTPFound(location=url)
 
 
 class TrialRegisterApplication(GenericWSGIApplication):
