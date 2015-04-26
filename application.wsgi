@@ -107,6 +107,26 @@ def populate_buy_email_data(entry):
                   'billing_country':entry.billing_country}
     return email_data
 
+def get_plan_quantity_amount(entry):
+    """ Return the plan and quantity and amount  based on the product, type
+        Tableau License
+    """
+    if entry.productid == Product.get_by_key('PALETTE-PRO').id:
+        plan = System.get_by_key('PALETTE-PRO-PLAN')
+        quantity = 1
+        amount = int(System.get_by_key('PALETTE-PRO-COST'))
+    elif entry.productid == Product.get_by_key('PALETTE-ENT').id:
+        quantity = entry.n
+        if entry.type == 'Named-user':
+            plan = System.get_by_key('PALETTE-ENT-NAMED-USER-PLAN')
+            amount = int(System.get_by_key('PALETTE-ENT-NAMED-USER-COST')) \
+                         * quantity
+        elif entry.type == 'Core':
+            plan = System.get_by_key('PALETTE-ENT-CORE-PLAN')
+            amount = int(System.get_by_key('PALETTE-ENT-CORE-COST')) \
+                         * quantity
+    return plan, quantity, amount
+
 class SupportApplication(GenericWSGIApplication):
 
     def service_GET(self, req):
@@ -204,8 +224,6 @@ class RegisterApplication(GenericWSGIApplication):
         return exc.HTTPFound(location=url)
 
 class VerifyApplication(GenericWSGIApplication):
-    REDIRECT_URL = 'http://www.palette-software.com/trial'
-
     def service_GET(self, req):
         """ Handle a Registration Validation of a new potential trial user
         """
@@ -236,7 +254,8 @@ class VerifyApplication(GenericWSGIApplication):
                 'email-yui_3_10_1_1_1389902554996_14932-field':entry.email,
                 'hidden-yui_3_17_2_1_1429117178321_54646':entry.key}
 
-        location = self.REDIRECT_URL + dict_to_qs(data)
+        url = System.get_by_key('VERIFY-REDIRECT-URL')
+        location = url + dict_to_qs(data)
         # use 302 here so that the browswer redirects with a GET request.
         return exc.HTTPFound(location=location)
 
@@ -291,9 +310,6 @@ class TrialRequestApplication(GenericWSGIApplication):
     TRIAL_FIELDS = TRIAL_FIELDS
     PALETTE_PRO = 'Palette Pro'
     PALETTE_ENT = 'Palette Enterprise'
-
-    REDIRECT_URL_PRO = 'http://www.palette-software.com/trial-confirmation-pro'
-    REDIRECT_URL_ENT = 'http://www.palette-software.com/trial-confirmation-ent'
 
     @required_parameters(*TRIAL_FIELDS.keys())
     def service_POST(self, req):
@@ -529,6 +545,7 @@ BUY_F2DB_FIELDS = {'fname-yui_3_10_1_1_1389902554996_14617':'firstname',
                    'text-yui_3_17_2_1_1426969180342_32971-field':'key',
                    'email-yui_3_10_1_1_1389902554996_14932-field': 'email',
                    'text-yui_3_10_1_1_1389902554996_16499-field': 'website',
+                   'country-yui_3_17_2_1_1426969180342_43961': 'phone0',
                    'areacode-yui_3_17_2_1_1426969180342_43961': 'phone1',
                    'prefix-yui_3_17_2_1_1426969180342_43961': 'phone2',
                    'line-yui_3_17_2_1_1426969180342_43961': 'phone3',
@@ -544,8 +561,6 @@ BUY_GET_FIELDS = ['firstname', 'lastname', 'key', 'email',
 class Buy2RequestApplication(GenericWSGIApplication):
     """ Class that Handles get/post methods for the palette buy url
     """
-    REDIRECT_URL = 'http://www.palette-software.com/subscribe-thank-you'
-
     def translate_POST(self, req, entry):
         # pylint: disable=invalid-name
         fname = req.POST.getall('fname')
@@ -556,16 +571,18 @@ class Buy2RequestApplication(GenericWSGIApplication):
         entry.billing_ln = lname[1]
         entry.email = req.POST['email']
         entry.website = req.POST['text-yui_3_10_1_1_1389902554996_16499-field']
+        country = req.POST['country-yui_3_17_2_1_1426969180342_43961']
         areacode = req.POST['areacode-yui_3_17_2_1_1426969180342_43961']
         prefix = req.POST['prefix-yui_3_17_2_1_1426969180342_43961']
         line = req.POST['line-yui_3_17_2_1_1426969180342_43961']
-        entry.phone = areacode + '-' + prefix + '-' + line
+        entry.phone = country + '-' + areacode + '-' + prefix + '-' + line
         entry.billing_address_line1 = req.POST['address']
         entry.billing_address_line2 = req.POST['address2']
         entry.billing_city = req.POST['city']
         entry.billing_state = req.POST['state']
         entry.billing_zip = req.POST['zipcode']
         entry.billing_country = req.POST['country']
+        entry.billing_email = req.POST.getall('email')[1]
         coupon = req.POST['text-yui_3_17_2_1_1428080829349_25557-field']
         entry.promo_code = coupon
 
@@ -592,16 +609,22 @@ class Buy2RequestApplication(GenericWSGIApplication):
                 if not entry.phone:
                     continue
                 tokens = entry.phone.split('-')
-                if len(tokens) == 4:
-                    tokens.pop(0) # ignore country if present
-                elif len(tokens) != 3:
+                if len(tokens) == 3:
+                    data[BUY_DB2F_FIELDS['phone0']] = '1'
+                elif len(tokens) == 4:
+                    data[BUY_DB2F_FIELDS['phone0']] = tokens.pop(0)
+                else:
                     logger.error('Invalid phone # found, key: ' + key)
                     continue
+
                 data[BUY_DB2F_FIELDS['phone1']] = tokens.pop(0)
                 data[BUY_DB2F_FIELDS['phone2']] = tokens.pop(0)
                 data[BUY_DB2F_FIELDS['phone3']] = tokens.pop(0)
             else:
                 data[BUY_DB2F_FIELDS[field]] = getattr(entry, field)
+
+        _, _, amount = get_plan_quantity_amount(entry)
+        data['text-yui_3_17_2_1_1429898133902_207337-field'] = amount
 
         SlackAPI.notify('Buy Browse Event: '
                 'Key: {0}, Opportunity: {1}, Name: {2} ({3}), '
@@ -638,14 +661,17 @@ class Buy2RequestApplication(GenericWSGIApplication):
 
         # first we charge them...
         token = req.POST['stripeToken']
+        plan, quantity, entry.amount = get_plan_quantity_amount(entry)
         if entry.promo_code:
             customer = stripe.Customer.create(source=token,
-                                              plan='MONTHLY',
+                                              plan=plan,
+                                              quantity=quantity,
                                               coupon=entry.promo_code,
                                               email=entry.email)
         else:
             customer = stripe.Customer.create(source=token,
-                                              plan='MONTHLY',
+                                              plan=plan,
+                                              quantity=quantity,
                                               email=entry.email)
         entry.stripeid = customer.id
 
@@ -687,7 +713,8 @@ class Buy2RequestApplication(GenericWSGIApplication):
         logger.info('Buy request succeeded for {0}'.format(key))
 
         # use 302 here so that the browswer redirects with a GET request.
-        return exc.HTTPFound(location=self.REDIRECT_URL)
+        url = System.get_by_key('BUY-REDIRECT-URL')
+        return exc.HTTPFound(location=url)
 
 
 # pylint: disable=invalid-name

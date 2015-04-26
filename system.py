@@ -85,7 +85,23 @@ class System(Base, BaseMixin):
     {'key':'REGISTGER-REDIRECT-URL',
      'value':'http://www.palette-software.com/register-thank-you'},
     {'key':'REGISTER-VERIFY-URL',
-     'value':'https://licensing.palette-software.com/api/verify'}
+     'value':'https://licensing.palette-software.com/api/verify'},
+    {'key':'BUY-REDIRECT-URL',
+     'value':'http://www.palette-software.com/subscribe-thank-you'},
+    {'key':'VERIFY-REDIRECT-URL',
+     'value':'http://www.palette-software.com/trial'},
+    {'key':'PALETTE-PRO-PLAN',
+     'value':'MONTHLY'},
+    {'key':'PALETTE-PRO-COST',
+     'value':'199'},
+    {'key':'PALETTE-ENT-NAMED-USER-PLAN',
+     'value':'ENTERPRISE_NU_M'},
+    {'key':'PALETTE-ENT-NAMED-USER-COST',
+     'value':'10'},
+    {'key':'PALETTE-ENT-CORE-PLAN',
+     'value':'ENTERPRISE_C_M'},
+    {'key':'PALETTE-ENT-CORE-COST',
+     'value':'200'}
     ]
 
     @classmethod

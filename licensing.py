@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from datetime import datetime
 from akiri.framework.sqlalchemy import Base, get_session
 
-from sqlalchemy import Column, String, Integer, DateTime, func
+from sqlalchemy import Column, String, Integer, Numeric, DateTime, func
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.exc import NoResultFound
@@ -65,6 +65,7 @@ class License(Base):
     admin_role = Column(String)
     promo_code = Column(String)
     stripeid = Column(String)
+    amount = Column(Numeric)
 
     # AWS, VMWare or Palette Pro
     hosting_type = Column(String)

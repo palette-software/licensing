@@ -181,7 +181,9 @@ class SalesforceAPI(object):
                  'Trial_Request_Date_Time__c':\
                                  data.registration_start_time.isoformat(),
                  'Access_Key__c':data.access_key,
-                 'Secret_Access_Key__c':data.secret_key})
+                 'Secret_Access_Key__c':data.secret_key,
+                 'Palette_Plan__c':data.product.name,
+                 'Amount':data.amount})
         logger.info('Creating new opportunity with Contact ' + \
                     'Name %s %s Account Id %s Contact Id %s',
                     data.firstname, data.lastname, accountid, contactid)
@@ -209,7 +211,11 @@ class SalesforceAPI(object):
                     'Hosting_Type__c':data.hosting_type,
                     'AWS_Region__c':data.aws_zone,
                     'Palette_Cloud_subdomain__c':data.subdomain,
-                    'Promo_Code__c':data.promo_code}
+                    'Promo_Code__c':data.promo_code,
+                    'Palette_Plan__c':data.product.name,
+                    'Tableau_App_License_Type__c':data.type,
+                    'Tableau_App_License_Count__c':data.n,
+                    'Amount':float(data.amount)}
             if data.registration_start_time is not None:
                 row['Trial_Request_Date_Time__c'] = \
                     data.registration_start_time.isoformat()
