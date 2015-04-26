@@ -213,8 +213,6 @@ class SalesforceAPI(object):
                     'Palette_Cloud_subdomain__c':data.subdomain,
                     'Promo_Code__c':data.promo_code,
                     'Palette_Plan__c':data.product.name,
-                    'Tableau_App_License_Type__c':data.type,
-                    'Tableau_App_License_Count__c':data.n,
                     'Amount':float(data.amount)}
             if data.registration_start_time is not None:
                 row['Trial_Request_Date_Time__c'] = \
