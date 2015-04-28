@@ -149,7 +149,28 @@ class SalesforceAPI(object):
                         data.firstname, data.lastname, contactid)
 
     @classmethod
+    def lookup_opportunity(cls, key):
+        """ Looks up opportunity and returns a dict
+        """
+        conn = cls._get_connection()
+        sql = "SELECT Name, id FROM Opportunity " +\
+              "WHERE Palette_License_Key__c='{0}'"
+        opp = conn.query(sql.format(key))
+        if opp is not None and opp['totalSize'] == 1:
+            return opp['records'][0]
+        return None
+
+    @classmethod
     def get_opportunity_name(cls, data):
+        """ Looks up opportunity name based on key
+        """
+        opp = cls.lookup_opportunity(data.key)
+        if opp is not None:
+            return opp['Name']
+        return '*Opportunity not found*'
+
+    @classmethod
+    def format_opportunity_name(cls, data):
         """ Returns the standard name for an opportunity
         """
         name = data.organization + ' ' + \
@@ -164,11 +185,10 @@ class SalesforceAPI(object):
         accountid = cls.lookup_or_create_account(data)
         contactid = cls.lookup_or_create_contact(data, accountid)
 
-        name = cls.get_opportunity_name(data)
+        name = cls.format_opportunity_name(data)
 
         conn = cls._get_connection()
-        opp = conn.Opportunity.create(
-                {'Name':name, 'AccountId':accountid,
+        row = {'Name':name, 'AccountId':accountid,
                  'StageName': Stage.get_by_id(data.stageid).name,
                  'CloseDate': data.expiration_time.isoformat(),
                  'Expiration_Date__c': data.expiration_time.isoformat(),
@@ -182,8 +202,11 @@ class SalesforceAPI(object):
                                  data.registration_start_time.isoformat(),
                  'Access_Key__c':data.access_key,
                  'Secret_Access_Key__c':data.secret_key,
-                 'Palette_Plan__c':data.product.name,
-                 'Amount':data.amount})
+                 'Amount':data.amount}
+        if data.productid is not None:
+            row['Palette_Plan__c'] = data.productid
+        opp = conn.Opportunity.create(row)
+
         logger.info('Creating new opportunity with Contact ' + \
                     'Name %s %s Account Id %s Contact Id %s',
                     data.firstname, data.lastname, accountid, contactid)
@@ -211,9 +234,11 @@ class SalesforceAPI(object):
                     'Hosting_Type__c':data.hosting_type,
                     'AWS_Region__c':data.aws_zone,
                     'Palette_Cloud_subdomain__c':data.subdomain,
-                    'Promo_Code__c':data.promo_code,
-                    'Palette_Plan__c':data.product.name,
-                    'Amount':float(data.amount)}
+                    'Promo_Code__c':data.promo_code}
+            if data.amount is not None:
+                row['Amount'] = float(data.amount)
+            if data.productid is not None:
+                row['Palette_Plan__c'] = data.productid
             if data.registration_start_time is not None:
                 row['Trial_Request_Date_Time__c'] = \
                     data.registration_start_time.isoformat()

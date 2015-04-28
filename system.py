@@ -101,7 +101,9 @@ class System(Base, BaseMixin):
     {'key':'PALETTE-ENT-CORE-PLAN',
      'value':'ENTERPRISE_C_M'},
     {'key':'PALETTE-ENT-CORE-COST',
-     'value':'200'}
+     'value':'200'},
+    {'key':'SENDWITHUS-TRIAL-REQUESTED-ENT-INTERNAL-ID',
+     'value':''}
     ]
 
     @classmethod

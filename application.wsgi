@@ -198,7 +198,7 @@ class RegisterApplication(GenericWSGIApplication):
 
             # notify slack
             sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
-            SlackAPI.notify('Register Unverified New Opportunity: '
+            SlackAPI.notify('*Register Unverified New Opportunity:* '
                     '{0} ({1}) {2}'.format(
                     SalesforceAPI.get_opportunity_name(entry),
                     entry.email,
@@ -241,7 +241,7 @@ class VerifyApplication(GenericWSGIApplication):
 
         # notify slack
         sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
-        SlackAPI.notify('Verified a New Opportunity: '
+        SlackAPI.notify('*Verified a New Trial Request* Opportunity: '
                 '{0} ({1}) {2}'.format(
                 SalesforceAPI.get_opportunity_name(entry),
                 entry.email,
@@ -370,8 +370,11 @@ class TrialRequestApplication(GenericWSGIApplication):
                 days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
             entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
             if entry.hosting_type == TrialRequestApplication.PALETTE_PRO:
+                entry.productid = Product.get_by_key('PALETTE-PRO').id
                 entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
                 entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
+            else:
+                entry.productid = Product.get_by_key('PALETTE-ENT').id
 
             session = get_session()
             session.commit()
@@ -398,10 +401,16 @@ class TrialRequestApplication(GenericWSGIApplication):
                                      'hello@palette-software.com',
                                      entry.email,
                                      populate_email_data(entry))
+            mailid = \
+                System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-ENT-INTERNAL-ID')
+            SendwithusAPI.send_message(mailid,
+                                     'licensing@palette-software.com',
+                                     'support@palette-software.com',
+                                     populate_email_data(entry))
             url = System.get_by_key('TRIAL-REQUEST-REDIRECT-ENT-URL')
 
         sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
-        SlackAPI.notify('Trial request Opportunity: '
+        SlackAPI.notify('*New Trial Request* Opportunity: '
                 '{0} ({1}) - Type: {2} {3}'.format(
                 SalesforceAPI.get_opportunity_name(entry),
                 entry.email,
@@ -514,7 +523,7 @@ class TrialStartApplication(GenericWSGIApplication):
               .format(key, entry.expiration_time))
 
             # update the opportunity
-            SalesforceAPI.update_opportunity(entry)
+            opp_id = SalesforceAPI.update_opportunity(entry)
             # subscribe the user to the trial workflow if not already
             SendwithusAPI.subscribe_user(
                          System.get_by_key('SENDWITHUS-TRIAL-STARTED-ID'),
@@ -522,11 +531,12 @@ class TrialStartApplication(GenericWSGIApplication):
                          entry.email,
                          populate_email_data(entry))
 
-            SlackAPI.notify('Trial Started: '
-                    'Key: {0}, Name: {1} ({2}), Org: {3}, Type: {4}' \
+            sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
+            SlackAPI.notify('*Trial Started:* '
+                    'Key: {0}, Name: {1} ({2}), Org: {3}, Type: {4} {5}' \
                     .format(entry.key,
                     entry.firstname + ' ' + entry.lastname, entry.email,
-                    entry.organization, entry.hosting_type))
+                    entry.organization, entry.hosting_type, sf_url))
         else:
             logger.info('Licensing ping received for key {0}'.format(key))
             # just update the last contact time
@@ -626,12 +636,14 @@ class Buy2RequestApplication(GenericWSGIApplication):
         _, _, amount = get_plan_quantity_amount(entry)
         data['text-yui_3_17_2_1_1429898133902_207337-field'] = amount
 
-        SlackAPI.notify('Buy Browse Event: '
+        opp_id = SalesforceAPI.lookup_opportunity(key)['Id']
+        sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
+        SlackAPI.notify('*Buy Browse Event:* '
                 'Key: {0}, Opportunity: {1}, Name: {2} ({3}), '
-                'Org: {4}, Type: {5}' \
+                'Org: {4}, Type: {5} {6}' \
                 .format(entry.key, SalesforceAPI.get_opportunity_name(entry),
                 entry.firstname + ' ' + entry.lastname, entry.email,
-                entry.organization, entry.hosting_type))
+                entry.organization, entry.hosting_type, sf_url))
 
         location = buy_url + dict_to_qs(data)
         raise exc.HTTPTemporaryRedirect(location=location)
@@ -705,7 +717,7 @@ class Buy2RequestApplication(GenericWSGIApplication):
         except StandardError:
             opportunity_name = 'UNKNOWN'
 
-        SlackAPI.notify('Buy request Opportunity: {0} ({1}) - Type: {2}'\
+        SlackAPI.notify('*Buy request Opportunity:* {0} ({1}) - Type: {2}'\
                         .format(opportunity_name,
                                 entry.email,
                                 entry.hosting_type))
