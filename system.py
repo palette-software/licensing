@@ -82,7 +82,7 @@ class System(Base, BaseMixin):
      'value':'http://www.palette-software.com/trial-confirmation-pro'},
     {'key':'TRIAL-REQUEST-REDIRECT-ENT-URL',
      'value':'http://www.palette-software.com/trial-confirmation-ent'},
-    {'key':'REGISTGER-REDIRECT-URL',
+    {'key':'REGISTER-REDIRECT-URL',
      'value':'http://www.palette-software.com/register-thank-you'},
     {'key':'REGISTER-VERIFY-URL',
      'value':'https://licensing.palette-software.com/api/verify'},
