@@ -696,7 +696,7 @@ class Buy2RequestApplication(GenericWSGIApplication):
 
         # update the opportunity
         SalesforceAPI.update_contact(entry)
-        SalesforceAPI.update_opportunity(entry)
+        opp_id = SalesforceAPI.update_opportunity(entry)
 
         # subscribe the user to the trial workflow if not already
         SendwithusAPI.subscribe_user(
@@ -717,10 +717,11 @@ class Buy2RequestApplication(GenericWSGIApplication):
         except StandardError:
             opportunity_name = 'UNKNOWN'
 
-        SlackAPI.notify('*Buy request Opportunity:* {0} ({1}) - Type: {2}'\
+        sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
+        SlackAPI.notify('*Buy Request* Opportunity: {0} ({1}) - Type: {2} {3}'\
                         .format(opportunity_name,
                                 entry.email,
-                                entry.hosting_type))
+                                entry.hosting_type, sf_url))
 
         logger.info('Buy request succeeded for {0}'.format(key))
 
