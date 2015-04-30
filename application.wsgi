@@ -190,14 +190,13 @@ class RegisterApplication(GenericWSGIApplication):
             entry.website = entry.organization
             entry.subdomain = get_unique_name(hostname_only(entry.organization))
             entry.name = entry.subdomain
+            entry.salesforceid = SalesforceAPI.new_opportunity(entry)
             session.add(entry)
             session.commit()
 
-            # create or use an existing opportunity
-            opp_id = SalesforceAPI.new_opportunity(entry)
-
             # notify slack
-            sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
+            sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(),
+                                      entry.salesforceid)
             SlackAPI.notify('*Register Unverified New Opportunity:* '
                     '{0} ({1}) {2}'.format(
                     SalesforceAPI.get_opportunity_name(entry),

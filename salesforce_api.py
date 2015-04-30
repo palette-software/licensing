@@ -39,8 +39,8 @@ class SalesforceAPI(object):
         """ Lookup an account and return the id
         """
         conn = cls. _get_connection()
-        sql = "SELECT Name, id FROM Account where Name='{0}'"
-        account = conn.query(sql.format(data.organization))
+        sql = "SELECT Name, id, Website FROM Account where Website='{0}'"
+        account = conn.query(sql.format(data.website))
         if account is None or account['totalSize'] == 0:
             accountid = None
         else:

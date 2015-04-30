@@ -89,6 +89,8 @@ class License(Base):
     access_key = Column(String)
     secret_key = Column(String)
 
+    salesforceid = Column(String)
+
     creation_time = Column(DateTime, server_default=func.now())
     last_update = Column(DateTime, default=datetime.utcnow(),
                                     onupdate=datetime.utcnow())

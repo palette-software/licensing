@@ -60,7 +60,8 @@ def run_process(entry, success_mailid, fail_mailid):
         #            'lastname':entry.lastname})
 
     else:
-        logger.info('*Succesfully launched instance {0}*'.format(entry.subdomain))
+        logger.info('*Succesfully launched instance {0}*'.\
+                    format(entry.subdomain))
         logger.error('out %s err %s', out, err)
         email_data = {'license':entry.key,
                   'firstname':entry.firstname,
