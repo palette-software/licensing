@@ -55,10 +55,23 @@ def server_name(hostname):
 def domain_only(email):
     """ Returns the domain part of the email address
     """
+    # get the domain part of the email
     parts = email.split('@')
     if len(parts) != 2:
         return None
-    return parts[1]
+
+    # split that
+    tld = parts[1].split('.')
+    if len(tld) == 2:
+        return parts[1]
+
+    # if the domain has one of the following get the last 3 parts
+    # other wise get the last two parts
+    subdomain = tld[-2]
+    if subdomain in ['com', 'co', 'org', 'net']:
+        return '.'.join(tld[-3:])
+    else:
+        return '.'.join(tld[-2:])
 
 def get_netloc(url):
     """ Returns the network part of the URL stripping away the scheme and the
