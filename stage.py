@@ -65,3 +65,8 @@ class Stage(Base, BaseMixin):
         for entry in session.query(Stage).all():
             data[entry.key] = entry.name
         return data
+
+    @classmethod
+    def get_stage_name(cls, stageid):
+        name = cls.get_by_id(stageid).name
+        return name

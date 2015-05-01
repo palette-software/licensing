@@ -197,8 +197,9 @@ class RegisterApplication(GenericWSGIApplication):
             # notify slack
             sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(),
                                       entry.salesforceid)
-            SlackAPI.notify('*Register Unverified New Opportunity:* '
-                    '{0} ({1}) {2}'.format(
+            SlackAPI.notify('*{0}* Opportunity: '
+                    '{1} ({2}) {3}'.format(
+                    Stage.get_stage_name(entry.stageid),
                     SalesforceAPI.get_opportunity_name(entry),
                     entry.email,
                     sf_url))
@@ -240,8 +241,9 @@ class VerifyApplication(GenericWSGIApplication):
 
         # notify slack
         sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
-        SlackAPI.notify('*Verified a New Trial Request* Opportunity: '
-                '{0} ({1}) {2}'.format(
+        SlackAPI.notify('*{0}* Opportunity: '
+                '{1} ({2}) {3}'.format(
+                 Stage.get_stage_name(entry.stageid),
                 SalesforceAPI.get_opportunity_name(entry),
                 entry.email,
                 sf_url))
@@ -409,8 +411,9 @@ class TrialRequestApplication(GenericWSGIApplication):
             url = System.get_by_key('TRIAL-REQUEST-REDIRECT-ENT-URL')
 
         sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
-        SlackAPI.notify('*New Trial Request* Opportunity: '
-                '{0} ({1}) - Type: {2} {3}'.format(
+        SlackAPI.notify('*{0}* Opportunity: '
+                '{1} ({2}) - Type: {3} {4}'.format(
+                Stage.get_stage_name(entry.stageid),
                 SalesforceAPI.get_opportunity_name(entry),
                 entry.email,
                 entry.hosting_type,
@@ -531,9 +534,9 @@ class TrialStartApplication(GenericWSGIApplication):
                          populate_email_data(entry))
 
             sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
-            SlackAPI.notify('*Trial Started:* '
-                    'Key: {0}, Name: {1} ({2}), Org: {3}, Type: {4} {5}' \
-                    .format(entry.key,
+            SlackAPI.notify('*{0}* '
+                    'Key: {1}, Name: {2} ({3}), Org: {4}, Type: {5} {6}' \
+                    .format(Stage.get_stage_name(entry.stageid), entry.key,
                     entry.firstname + ' ' + entry.lastname, entry.email,
                     entry.organization, entry.hosting_type, sf_url))
         else:
@@ -717,8 +720,9 @@ class Buy2RequestApplication(GenericWSGIApplication):
             opportunity_name = 'UNKNOWN'
 
         sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
-        SlackAPI.notify('*Buy Request* Opportunity: {0} ({1}) - Type: {2} {3}'\
-                        .format(opportunity_name,
+        SlackAPI.notify('*{0}* Opportunity: {1} ({2}) - Type: {3} {4}'\
+                        .format(Stage.get_stage_name(entry.stageid),
+                                opportunity_name,
                                 entry.email,
                                 entry.hosting_type, sf_url))
 

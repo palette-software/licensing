@@ -89,7 +89,7 @@ class System(Base, BaseMixin):
     {'key':'BUY-REDIRECT-URL',
      'value':'http://www.palette-software.com/subscribe-thank-you'},
     {'key':'VERIFY-REDIRECT-URL',
-     'value':'http://www.palette-software.com/trial'},
+     'value':'http://www.palette-software.com/start-trial'},
     {'key':'PALETTE-PRO-PLAN',
      'value':'MONTHLY'},
     {'key':'PALETTE-PRO-COST',
