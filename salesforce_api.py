@@ -108,7 +108,6 @@ class SalesforceAPI(object):
         if contactid is None:
             # if contact doesnt exist try leads
             lead = cls.lookup_lead(data)
-            print lead
             if lead is not None:
                 # if a lead exists create a contact with the lead info
                 fields = {'Firstname':lead['FirstName'],

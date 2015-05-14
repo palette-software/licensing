@@ -784,10 +784,6 @@ if __name__ == '__main__':
 
     application = TransLogger(application)
 
-    #bla = License.get_by_key('bfbecfc0-eb6b-419e-ba97-05be8ad25953')
-    #print bla
-    #print SalesforceAPI.lookup_lead(bla)
-
     router.add_redirect(r'/\Z', 'http://www.palette-software.com')
     runserver(application, use_reloader=True,
               host='0.0.0.0', port=args.port, ssl_pem=args.pem)
