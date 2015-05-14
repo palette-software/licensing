@@ -25,9 +25,9 @@ class System(Base, BaseMixin):
     {'key':'SALESFORCE-USERNAME',
      'value':'licensing@palette-software.com'},
     {'key':'SALESFORCE-PASSWORD',
-     'value':'Tableau2015!'},
+     'value':'Tableau2014!'},
     {'key':'SALESFORCE-TOKEN',
-     'value':'GtjDrVqnGImDkgjc2LJgLIgip'},
+     'value':'HtKzxC8KpOKMOskGTSNTLxflo'},
     {'key':'TRIAL-REQ-EXPIRATION-DAYS',
      'value':'30'},
     {'key':'TRIAL-REG-EXPIRATION-DAYS',
@@ -103,6 +103,8 @@ class System(Base, BaseMixin):
     {'key':'PALETTE-ENT-CORE-COST',
      'value':'200'},
     {'key':'SENDWITHUS-TRIAL-REQUESTED-ENT-INTERNAL-ID',
+     'value':''},
+    {'key':'SALESFORCE-URL',
      'value':''}
     ]
 

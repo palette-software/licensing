@@ -82,6 +82,7 @@ def populate_email_data(entry):
     email_data = {'license':entry.key,
                   'firstname':entry.firstname,
                   'lastname':entry.lastname,
+                  'email':entry.email,
                   'organization':entry.organization,
                   'hosting_type':entry.hosting_type,
                   'promo_code':entry.promo_code,
@@ -782,6 +783,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     application = TransLogger(application)
+
+    #bla = License.get_by_key('bfbecfc0-eb6b-419e-ba97-05be8ad25953')
+    #print bla
+    #print SalesforceAPI.lookup_lead(bla)
 
     router.add_redirect(r'/\Z', 'http://www.palette-software.com')
     runserver(application, use_reloader=True,

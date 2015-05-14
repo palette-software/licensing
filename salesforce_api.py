@@ -7,8 +7,6 @@ from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 
 logger = logging.getLogger('licensing')
 
-SALESFORCE_URL = 'https://na4.salesforce.com'
-
 class SalesforceAPI(object):
     """ Class that uses the salesforce python module to create
         Contcts, Accounts and Opportunities
@@ -32,13 +30,13 @@ class SalesforceAPI(object):
 
     @classmethod
     def get_url(cls):
-        return SALESFORCE_URL
+        return System.get_by_key('SALESFORCE-URL')
 
     @classmethod
     def lookup_account(cls, data):
         """ Lookup an account and return the id
         """
-        conn = cls. _get_connection()
+        conn = cls._get_connection()
         sql = "SELECT Name, id, Website FROM Account where Website='{0}'"
         account = conn.query(sql.format(data.website))
         if account is None or account['totalSize'] == 0:
@@ -105,19 +103,41 @@ class SalesforceAPI(object):
     def lookup_or_create_contact(cls, data, accountid):
         """ Lookup or create contact
         """
+        fields = None
         contactid = cls.lookup_contact(data)
         if contactid is None:
-            conn = cls._get_connection()
-            contact = conn.Contact.create(
-                                      {'Firstname':data.firstname,
-                                       'Lastname':data.lastname,
-                                       'Email':data.email,
-                                       'Phone':data.phone,
-                                       'AccountId':accountid,
-                                       'Admin_Role__c':data.admin_role})
-            contactid = contact['id']
-            logger.info('Creating Contact Name %s %s Id %s',
-                        data.firstname, data.lastname, contactid)
+            # if contact doesnt exist try leads
+            lead = cls.lookup_lead(data)
+            print lead
+            if lead is not None:
+                # if a lead exists create a contact with the lead info
+                fields = {'Firstname':lead['FirstName'],
+                          'Lastname':lead['LastName'],
+                          'Email':lead['Email'],
+                          'Phone':lead['Phone']}
+                logger.info('Created contact from lead %s %s %s',
+                            data.firstname, data.lastname, lead['Id'])
+
+                # then delete the lead
+                cls.delete_lead(lead['Id'])
+
+        if fields is None:
+            fields = {'Firstname':data.firstname,
+                      'Lastname':data.lastname,
+                      'Email':data.email,
+                      'Phone':data.phone,
+                      'AccountId':accountid,
+                      'Admin_Role__c':data.admin_role}
+
+        # create the new contact if it doesnt exist and no lead exists
+        accountid = cls.lookup_or_create_account(data)
+
+        conn = cls._get_connection()
+        contact = conn.Contact.create(fields)
+        contactid = contact['id']
+
+        logger.info('Created Contact Name %s %s Id %s',
+                data.firstname, data.lastname, contactid)
 
         return contactid
 
@@ -266,4 +286,31 @@ class SalesforceAPI(object):
 
             oppid = opp['records'][0]['Id']
             conn.Opportunity.delete(oppid)
+
+    @classmethod
+    def lookup_lead(cls, data):
+        """ Lookup a lead
+        """
+        conn = cls._get_connection()
+        sql = "SELECT Id, Firstname, Lastname, Email, Company, " + \
+              "       Phone, Website " + \
+              "FROM Lead where Email='{0}'"
+        lead = conn.query(sql.format(data.email))
+        if lead is None or lead['totalSize'] == 0:
+            result = None
+        else:
+            result = lead['records'][0]
+        return result
+
+    @classmethod
+    def delete_lead(cls, leadid):
+        """ Delete a lead
+        """
+        conn = cls._get_connection()
+        sql = "SELECT id " + \
+              "FROM Lead where id='{0}'".format(leadid)
+        lead = conn.query(sql.format(leadid))
+        if lead is not None or lead['totalSize'] == 1:
+            logger.info('Deleting lead id %s', leadid)
+            conn.Lead.delete(leadid)
 
