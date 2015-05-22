@@ -223,7 +223,7 @@ class SalesforceAPI(object):
                  'Secret_Access_Key__c':data.secret_key,
                  'Amount':data.amount}
         if data.productid is not None:
-            row['Palette_Plan__c'] = data.productid
+            row['Palette_Plan__c'] = data.product.name
         opp = conn.Opportunity.create(row)
 
         logger.info('Creating new opportunity with Contact ' + \
@@ -257,7 +257,7 @@ class SalesforceAPI(object):
             if data.amount is not None:
                 row['Amount'] = float(data.amount)
             if data.productid is not None:
-                row['Palette_Plan__c'] = data.productid
+                row['Palette_Plan__c'] = data.product.name
             if data.registration_start_time is not None:
                 row['Trial_Request_Date_Time__c'] = \
                     data.registration_start_time.isoformat()
