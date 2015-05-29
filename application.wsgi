@@ -511,7 +511,28 @@ class TrialStartApplication(GenericWSGIApplication):
         session = get_session()
 
         # FIXME: *only* do this if in the correct stage (otherwise free trials!)
-        if entry.stageid != Stage.get_by_key('STAGE-TRIAL-STARTED').id:
+        if entry.stageid == Stage.get_by_key('STAGE-CLOSED-WON').id:
+            #if already set to closed won just update time and notify
+            if entry.license_start_time is None:
+                entry.license_start_time = datetime.utcnow()
+            entry.contact_time = datetime.utcnow()
+
+            session.commit()
+
+            logger.info('License Start for key {0} success. Expiration {1}'\
+              .format(key, entry.expiration_time))
+
+            # update the opportunity
+            opp_id = SalesforceAPI.update_opportunity(entry)
+
+            sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
+            SlackAPI.notify('*{0}* '
+                    'Key: {1}, Name: {2} ({3}), Org: {4}, Type: {5} {6}' \
+                    .format(Stage.get_stage_name(entry.stageid), entry.key,
+                    entry.firstname + ' ' + entry.lastname, entry.email,
+                    entry.organization, entry.hosting_type, sf_url))
+
+        elif entry.stageid != Stage.get_by_key('STAGE-TRIAL-STARTED').id:
             logger.info('Starting Trial for key {0}'.format(key))
 
             # if this is the trial hasnt started yet start it
