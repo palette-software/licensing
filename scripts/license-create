@@ -115,7 +115,6 @@ class LicenseAPI():
         """ Handle licensing for a new user 
         """
         session = get_session()
-        print params['name']
         entry = License.get_by_name(params['name'])
         if entry is not None:
             logger.info('License already exists for %s %s %s %s',
@@ -124,8 +123,8 @@ class LicenseAPI():
         else:
             entry = License()
             translate_values(params, entry, REGISTER_FIELDS)
-            logger.info('Generating new license for %s %s %s',
-                        entry.firstname, entry.lastname, entry.email)
+            logger.info('Generating new license for %s  %s %s %s',
+                    entry.name, entry.firstname, entry.lastname, entry.email)
 
             entry.key = str(uuid.uuid4())
             entry.stageid = Stage.get_by_key('STAGE-CLOSED-WON').id

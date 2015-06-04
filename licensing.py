@@ -8,6 +8,9 @@ from sqlalchemy.schema import ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.exc import NoResultFound
 
+from stage import Stage
+from product import Product
+
 class License(Base):
     # pylint: disable=no-init
     # pylint: disable=invalid-name

@@ -143,6 +143,9 @@ class BotoAPI(object):
     def terminate_instance(cls, name, region):
         """ Terminates an instance on AWS
         """
+        if region is None:
+            region = 'us-east-1'
+
         conn = ec2.connect_to_region(region)
         reservations = conn.get_all_reservations()
         instances = [i for r in reservations for i in r.instances]
