@@ -1,7 +1,10 @@
 from __future__ import absolute_import
 from urlparse import urlsplit
 from dateutil import tz
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 import sys
+import urllib
 
 class State(object):
     def __init__(self):
@@ -91,3 +94,27 @@ def to_localtime(from_dt):
     utc = tz.gettz('UTC')
     from_dt = from_dt.replace(tzinfo=utc)
     return from_dt.astimezone(mytz)
+
+def time_from_today(hours=0, days=0, months=0):
+    return datetime.utcnow() + \
+           relativedelta(hours=hours, days=days, months=months)
+
+def kvp(key, value):
+    if value is not None:
+        return str(key) + '=' + urllib.quote(str(value))
+    else:
+        return str(key) + '='
+
+def dict_to_qs(data):
+    qstr = '&'.join([kvp(k, v) for k, v in data.iteritems()])
+    if not qstr:
+        return ''
+    return '?' + qstr
+
+def translate_values(source, entry, fields):
+    """Convert fields values to the appropriate values in the entry."""
+    for name, dest_attr in fields.items():
+        value = source.get(name)
+        if value is not None:
+            setattr(entry, dest_attr, value)
+
