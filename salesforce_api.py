@@ -5,6 +5,8 @@ from system import System
 from utils import to_localtime
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 
+from product import Product
+
 logger = logging.getLogger('licensing')
 
 class SalesforceAPI(object):
@@ -223,7 +225,7 @@ class SalesforceAPI(object):
                  'Secret_Access_Key__c':data.secret_key,
                  'Amount':data.amount}
         if data.productid is not None:
-            row['Palette_Plan__c'] = data.product.name
+            row['Palette_Plan__c'] = Product.get_by_id(data.productid).name
         opp = conn.Opportunity.create(row)
 
         logger.info('Creating new opportunity with Contact ' + \

@@ -22,6 +22,14 @@ class Product(Base, BaseMixin):
                  'name': 'Palette Enterprise'}]
 
     @classmethod
+    def get_by_id(cls, rowid):
+        session = get_session()
+        try:
+            return session.query(Product).filter(Product.id == rowid).one()
+        except NoResultFound:
+            return None
+
+    @classmethod
     def get_by_key(cls, key):
         session = get_session()
         try:

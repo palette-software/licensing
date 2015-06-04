@@ -23,7 +23,8 @@ SCRIPTS := \
 	license-start-trial \
 	support-connect \
 	support-define-port \
-	license-cleanup
+	license-cleanup \
+        license-create
 
 all: pylint
 .PHONY: all
