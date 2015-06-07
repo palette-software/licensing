@@ -6,6 +6,7 @@ URL := ubuntu@licensing.palette-software.com
 
 FILES := application.wsgi \
 	licensing.py \
+        license_manager.py \
 	mixin.py \
 	salesforce_api.py \
 	sendwithus_api.py \
@@ -24,7 +25,8 @@ SCRIPTS := \
 	support-connect \
 	support-define-port \
 	license-cleanup \
-        license-create
+        license-create \
+        license-update
 
 all: pylint
 .PHONY: all

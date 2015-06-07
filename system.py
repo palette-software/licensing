@@ -105,6 +105,8 @@ class System(Base, BaseMixin):
     {'key':'SENDWITHUS-TRIAL-REQUESTED-ENT-INTERNAL-ID',
      'value':''},
     {'key':'SALESFORCE-URL',
+     'value':''},
+    {'key':'SENDWITHUS-LICENSE-STARTED-ID',
      'value':''}
     ]
 

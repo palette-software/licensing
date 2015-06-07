@@ -8,6 +8,7 @@ from sqlalchemy.schema import ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.exc import NoResultFound
 
+# pylint: disable=unused-import
 from stage import Stage
 from product import Product
 
