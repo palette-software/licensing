@@ -20,7 +20,7 @@ from licensing import License
 from system import System
 from product import Product
 from support import Support
-from utils import get_netloc, hostname_only, domain_only
+from utils import get_netloc, hostname_only, domain_only, to_localtime
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
@@ -112,11 +112,16 @@ def get_plan_quantity_amount(entry):
     """ Return the plan and quantity and amount  based on the product, type
         Tableau License
     """
+    plan = None
+    amount = None
+
     if entry.productid == Product.get_by_key('PALETTE-PRO').id:
+        # return palette pro cost which has a fixed cost
         plan = System.get_by_key('PALETTE-PRO-PLAN')
         quantity = 1
         amount = int(System.get_by_key('PALETTE-PRO-COST'))
     elif entry.productid == Product.get_by_key('PALETTE-ENT').id:
+        # return palette enterprise cost which depends on license type
         quantity = entry.n
         if entry.type == 'Named-user':
             plan = System.get_by_key('PALETTE-ENT-NAMED-USER-PLAN')
@@ -126,6 +131,13 @@ def get_plan_quantity_amount(entry):
             plan = System.get_by_key('PALETTE-ENT-CORE-PLAN')
             amount = int(System.get_by_key('PALETTE-ENT-CORE-COST')) \
                          * quantity
+    if plan is None or amount is None:
+        # if product id, entry type or n is not set just return the cost
+        # for for 1 named user
+        quantity = 1
+        plan = System.get_by_key('PALETTE-ENT-NAMED-USER-PLAN')
+        amount = int(System.get_by_key('PALETTE-ENT-NAMED-USER-COST')) \
+                     * quantity
     return plan, quantity, amount
 
 class SupportApplication(GenericWSGIApplication):
@@ -199,11 +211,12 @@ class RegisterApplication(GenericWSGIApplication):
             sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(),
                                       entry.salesforceid)
             SlackAPI.notify('*{0}* Opportunity: '
-                    '{1} ({2}) {3}'.format(
+                    '{1} ({2}) {3} Expiration {4}'.format(
                     Stage.get_stage_name(entry.stageid),
                     SalesforceAPI.get_opportunity_name(entry),
                     entry.email,
-                    sf_url))
+                    sf_url,
+                    to_localtime(entry.expiration_time).strftime("%x")))
 
         # send the user an email to allow them to verify their email address
         mailid = System.get_by_key('SENDWITHUS-REGISTERED-UNVERIFIED-ID')
@@ -243,11 +256,12 @@ class VerifyApplication(GenericWSGIApplication):
         # notify slack
         sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
         SlackAPI.notify('*{0}* Opportunity: '
-                '{1} ({2}) {3}'.format(
+                '{1} ({2}) {3} Expiration {4}'.format(
                  Stage.get_stage_name(entry.stageid),
                 SalesforceAPI.get_opportunity_name(entry),
                 entry.email,
-                sf_url))
+                sf_url,
+                to_localtime(entry.expiration_time).strftime("%x")))
 
         logger.info('Register verified success for %s', entry.email)
 
@@ -313,6 +327,7 @@ class TrialRequestApplication(GenericWSGIApplication):
     PALETTE_PRO = 'Palette Pro'
     PALETTE_ENT = 'Palette Enterprise'
 
+# pylint: disable=too-many-statements
     @required_parameters(*TRIAL_FIELDS.keys())
     def service_POST(self, req):
         """ Handler for Try Palette Form Post
@@ -413,12 +428,13 @@ class TrialRequestApplication(GenericWSGIApplication):
 
         sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
         SlackAPI.notify('*{0}* Opportunity: '
-                '{1} ({2}) - Type: {3} {4}'.format(
+                '{1} ({2}) - Type: {3} {4} Expiration {5}'.format(
                 Stage.get_stage_name(entry.stageid),
                 SalesforceAPI.get_opportunity_name(entry),
                 entry.email,
                 entry.hosting_type,
-                sf_url))
+                sf_url,
+                to_localtime(entry.expiration_time).strftime("%x")))
 
         logger.info('Trial request success for %s %s', entry.email, entry.key)
 
@@ -527,10 +543,12 @@ class TrialStartApplication(GenericWSGIApplication):
 
             sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
             SlackAPI.notify('*{0}* '
-                    'Key: {1}, Name: {2} ({3}), Org: {4}, Type: {5} {6}' \
+                    'Key: {1}, Name: {2} ({3}), Org: {4}, Type: {5} {6} '\
+                    'Expiration {7}' \
                     .format(Stage.get_stage_name(entry.stageid), entry.key,
                     entry.firstname + ' ' + entry.lastname, entry.email,
-                    entry.organization, entry.hosting_type, sf_url))
+                    entry.organization, entry.hosting_type, sf_url,
+                    to_localtime(entry.expiration_time).strftime("%x")))
 
         elif entry.stageid != Stage.get_by_key('STAGE-TRIAL-STARTED').id:
             logger.info('Starting Trial for key {0}'.format(key))
@@ -557,10 +575,12 @@ class TrialStartApplication(GenericWSGIApplication):
 
             sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
             SlackAPI.notify('*{0}* '
-                    'Key: {1}, Name: {2} ({3}), Org: {4}, Type: {5} {6}' \
+                    'Key: {1}, Name: {2} ({3}), Org: {4}, Type: {5} {6} '\
+                    'Expiration: {7}' \
                     .format(Stage.get_stage_name(entry.stageid), entry.key,
                     entry.firstname + ' ' + entry.lastname, entry.email,
-                    entry.organization, entry.hosting_type, sf_url))
+                    entry.organization, entry.hosting_type, sf_url,
+                    to_localtime(entry.expiration_time).strftime("%x")))
         else:
             logger.info('Licensing ping received for key {0}'.format(key))
             # just update the last contact time
@@ -662,12 +682,15 @@ class Buy2RequestApplication(GenericWSGIApplication):
 
         opp_id = SalesforceAPI.lookup_opportunity(key)['Id']
         sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
+        is_expired = entry.expiration_time < datetime.utcnow()
         SlackAPI.notify('*Buy Browse Event:* '
                 'Key: {0}, Opportunity: {1}, Name: {2} ({3}), '
-                'Org: {4}, Type: {5} {6}' \
+                'Org: {4}, Type: {5} {6} Expiration {7} Expired: {8}' \
                 .format(entry.key, SalesforceAPI.get_opportunity_name(entry),
                 entry.firstname + ' ' + entry.lastname, entry.email,
-                entry.organization, entry.hosting_type, sf_url))
+                entry.organization, entry.hosting_type, sf_url,
+                to_localtime(entry.expiration_time).strftime("%x"),
+                is_expired))
 
         location = buy_url + dict_to_qs(data)
         raise exc.HTTPTemporaryRedirect(location=location)
@@ -742,11 +765,13 @@ class Buy2RequestApplication(GenericWSGIApplication):
             opportunity_name = 'UNKNOWN'
 
         sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
-        SlackAPI.notify('*{0}* Opportunity: {1} ({2}) - Type: {3} {4}'\
+        SlackAPI.notify('*{0}* Opportunity: {1} ({2}) - Type: {3} {4} '\
+                        'Expiration {5}'\
                         .format(Stage.get_stage_name(entry.stageid),
                                 opportunity_name,
                                 entry.email,
-                                entry.hosting_type, sf_url))
+                                entry.hosting_type, sf_url,
+                to_localtime(entry.expiration_time).strftime("%x")))
 
         logger.info('Buy request succeeded for {0}'.format(key))
 
