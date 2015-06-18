@@ -3,7 +3,8 @@ from __future__ import absolute_import
 from datetime import datetime
 from akiri.framework.sqlalchemy import Base, get_session
 
-from sqlalchemy import Column, String, Integer, Numeric, DateTime, func
+from sqlalchemy import Column, func
+from sqlalchemy import Boolean, String, Integer, DateTime
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.exc import NoResultFound
@@ -54,46 +55,38 @@ class License(Base):
     # Time/date when the Tableau was bought
     license_start_time = Column(DateTime)
 
-    email = Column(String, nullable=False)
+    # Promotion code / coupon
+    promo_code = Column(String) # can't be in billing
+
+    # FIXME: move to a customer table
+    email = Column(String, nullable=False) # FIXME: unique
     firstname = Column(String, nullable=False)
     lastname = Column(String, nullable=False)
-
-    # used for Palette Pro
-    subdomain = Column(String)
-
-    # customer info
     organization = Column(String)
     timezone = Column(String)
     website = Column(String)
     phone = Column(String)
     admin_role = Column(String)
-    promo_code = Column(String)
-    stripeid = Column(String)
-    amount = Column(Numeric)
 
     # AWS, VMWare or Palette Pro
     hosting_type = Column(String)
-    # AWS availability zone
-    aws_zone = Column(String)
 
-    # Alternate biling contact
-    billing_fn = Column(String)
-    billing_ln = Column(String)
-    billing_email = Column(String)
-    billing_phone = Column(String)
-
-    # Billing info
-    billing_address_line1 = Column(String)
-    billing_address_line2 = Column(String)
-    billing_city = Column(String)
-    billing_state = Column(String)
-    billing_zip = Column(String)
-    billing_country = Column(String)
-
+    # FIXME: move to a separate Palette Pro table.
+    subdomain = Column(String)
+    aws_zone = Column(String) # AWS availability zone
     access_key = Column(String)
     secret_key = Column(String)
 
     salesforceid = Column(String)
+
+    # Last connection from the support functionality
+    support_contact_time = Column(DateTime)
+
+    # What repository to use for generating the image.
+    repo = Column(String, nullable=False, default="production")
+
+    # Is this an active record?
+    active = Column(Boolean, nullable=False, default=True)
 
     creation_time = Column(DateTime, server_default=func.now())
     last_update = Column(DateTime, default=datetime.utcnow(),

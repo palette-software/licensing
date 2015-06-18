@@ -93,7 +93,7 @@ def populate_email_data(entry):
     return email_data
 
 def populate_buy_email_data(entry):
-    """ creates a dict that contains the fileds to put passed to buy emails
+    """ creates a dict that contains the fields to put passed to buy emails
     """
     data = {'firstname':entry.firstname,
             'lastname':entry.lastname,
@@ -626,6 +626,7 @@ class Buy2RequestApplication(GenericWSGIApplication):
         if not billing:
             billing = Billing(license_id=entry.id)
             session.add(billing)
+            entry.billing = billing
 
         fname = req.POST.getall('fname')
         lname = req.POST.getall('lname')
@@ -639,7 +640,7 @@ class Buy2RequestApplication(GenericWSGIApplication):
         areacode = req.POST['areacode-yui_3_17_2_1_1426969180342_43961']
         prefix = req.POST['prefix-yui_3_17_2_1_1426969180342_43961']
         line = req.POST['line-yui_3_17_2_1_1426969180342_43961']
-        entry.phone = country + '-' + areacode + '-' + prefix + '-' + line
+        billing.phone = country + '-' + areacode + '-' + prefix + '-' + line
         billing.address_line1 = req.POST['address']
         billing.address_line2 = req.POST['address2']
         billing.city = req.POST['city']
@@ -651,6 +652,7 @@ class Buy2RequestApplication(GenericWSGIApplication):
         entry.promo_code = coupon
 
     def service_GET(self, req):
+         # pylint: disable=too-many-locals
         """ Handle get request which looks up the key and redirects to a
             URL to buy with the info pre-populated on the form
             NOTE: never fail - always redirect to the buy page.
@@ -715,6 +717,7 @@ class Buy2RequestApplication(GenericWSGIApplication):
     def service_POST(self, req):
         """ Handle a Buy Request
         """
+        # pylint: disable=too-many-locals
         # key name and id are the same.
         key = req.params_get(BUY_DB2F_FIELDS['key'])
         entry = License.get_by_key(key)
@@ -736,7 +739,7 @@ class Buy2RequestApplication(GenericWSGIApplication):
 
         # first we charge them...
         token = req.POST['stripeToken']
-        plan, quantity, entry.amount = get_plan_quantity_amount(entry)
+        plan, quantity, amount = get_plan_quantity_amount(entry)
         if entry.promo_code:
             customer = stripe.Customer.create(source=token,
                                               plan=plan,
@@ -748,7 +751,8 @@ class Buy2RequestApplication(GenericWSGIApplication):
                                               plan=plan,
                                               quantity=quantity,
                                               email=entry.email)
-        entry.stripeid = customer.id
+        entry.billing.amount = amount
+        entry.billing.stripeid = customer.id
 
         entry.expiration_time = time_from_today(
             months=int(System.get_by_key('BUY-EXPIRATION-MONTHS')))

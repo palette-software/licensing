@@ -38,7 +38,7 @@ def main():
     entry.firstname = "Jack"
     entry.lastname = "User"
     entry.key = license_key
-    entry.stageid = Stage.get_by_key('STAGE-VERIFIED')
+    entry.stageid = Stage.get_by_key('STAGE-VERIFIED').id
     entry.expiration_time = datetime.utcnow() + timedelta(days=TRIAL_DAYS)
 
     session = get_session()
