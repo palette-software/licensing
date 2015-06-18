@@ -12,7 +12,6 @@ from license_manager import LicenseManager
 
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
 
-
 # pylint: disable=invalid-name
 database = DATABASE
 create_engine(database, echo=False, pool_size=20, max_overflow=30)

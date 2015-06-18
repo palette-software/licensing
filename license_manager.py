@@ -37,25 +37,6 @@ def populate_email_data(entry):
                   'secret_key':entry.secret_key}
     return email_data
 
-
-def populate_buy_email_data(entry):
-    """ creates a dict that contains the fileds to put passed to buy emails
-    """
-    email_data = {'firstname':entry.firstname,
-                  'lastname':entry.lastname,
-                  'email':entry.email,
-                  'phone':entry.phone,
-                  'org':entry.organization,
-                  'hosting_type':entry.hosting_type,
-                  'billing_address_line1':entry.billing_address_line1,
-                  'billing_address_line2':entry.billing_address_line2,
-                  'billing_city':entry.billing_city,
-                  'billing_state':entry.billing_state,
-                  'billing_zip':entry.billing_zip,
-                  'billing_country':entry.billing_country}
-    return email_data
-
-
 class LicenseManager(object):
     @classmethod
     def _check_expired(cls):

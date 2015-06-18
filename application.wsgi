@@ -15,6 +15,7 @@ from akiri.framework.middleware.sqlalchemy import SessionMiddleware
 from akiri.framework.sqlalchemy import create_engine, get_session
 from akiri.framework.util import required_parameters
 
+from billing import Billing
 from stage import Stage
 from licensing import License
 from system import System
@@ -28,7 +29,7 @@ from ansible_api import AnsibleAPI
 from boto_api import BotoAPI
 
 import stripe
-#stripe.api_key = 'sk_test_ynEoVFrJuhuZ2cVmhCu0ePU4'
+# stripe.api_key = 'sk_test_ynEoVFrJuhuZ2cVmhCu0ePU4'
 stripe.api_key = 'sk_live_VQnPZ5WlUY0hgbYv5KsGUM80'
 
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
@@ -94,19 +95,21 @@ def populate_email_data(entry):
 def populate_buy_email_data(entry):
     """ creates a dict that contains the fileds to put passed to buy emails
     """
-    email_data = {'firstname':entry.firstname,
-                  'lastname':entry.lastname,
-                  'email':entry.email,
-                  'phone':entry.phone,
-                  'org':entry.organization,
-                  'hosting_type':entry.hosting_type,
-                  'billing_address_line1':entry.billing_address_line1,
-                  'billing_address_line2':entry.billing_address_line2,
-                  'billing_city':entry.billing_city,
-                  'billing_state':entry.billing_state,
-                  'billing_zip':entry.billing_zip,
-                  'billing_country':entry.billing_country}
-    return email_data
+    data = {'firstname':entry.firstname,
+            'lastname':entry.lastname,
+            'email':entry.email,
+            'phone':entry.phone,
+            'org':entry.organization,
+            'hosting_type':entry.hosting_type}
+
+    if entry.billing:
+        data['billing_address_line1'] = entry.billing.address_line1
+        data['billing_address_line2'] = entry.billing.address_line2
+        data['billing_city'] = entry.billing.city
+        data['billing_state'] = entry.billing.state
+        data['billing_zip'] = entry.billing.zipcode
+        data['billing_country'] = entry.billing.country
+    return data
 
 def get_plan_quantity_amount(entry):
     """ Return the plan and quantity and amount  based on the product, type
@@ -617,12 +620,19 @@ class Buy2RequestApplication(GenericWSGIApplication):
     """
     def translate_POST(self, req, entry):
         # pylint: disable=invalid-name
+        session = get_session()
+
+        billing = entry.billing
+        if not billing:
+            billing = Billing(license_id=entry.id)
+            session.add(billing)
+
         fname = req.POST.getall('fname')
         lname = req.POST.getall('lname')
         entry.firstname = fname[0]
         entry.lastname = lname[0]
-        entry.billing_fn = fname[1]
-        entry.billing_ln = lname[1]
+        billing.firstname = fname[1]
+        billing.lastname = lname[1]
         entry.email = req.POST['email']
         entry.website = req.POST['text-yui_3_10_1_1_1389902554996_16499-field']
         country = req.POST['country-yui_3_17_2_1_1426969180342_43961']
@@ -630,13 +640,13 @@ class Buy2RequestApplication(GenericWSGIApplication):
         prefix = req.POST['prefix-yui_3_17_2_1_1426969180342_43961']
         line = req.POST['line-yui_3_17_2_1_1426969180342_43961']
         entry.phone = country + '-' + areacode + '-' + prefix + '-' + line
-        entry.billing_address_line1 = req.POST['address']
-        entry.billing_address_line2 = req.POST['address2']
-        entry.billing_city = req.POST['city']
-        entry.billing_state = req.POST['state']
-        entry.billing_zip = req.POST['zipcode']
-        entry.billing_country = req.POST['country']
-        entry.billing_email = req.POST.getall('email')[1]
+        billing.address_line1 = req.POST['address']
+        billing.address_line2 = req.POST['address2']
+        billing.city = req.POST['city']
+        billing.state = req.POST['state']
+        billing.zipcode = req.POST['zipcode']
+        billing.country = req.POST['country']
+        billing.email = req.POST.getall('email')[1]
         coupon = req.POST['text-yui_3_17_2_1_1428080829349_25557-field']
         entry.promo_code = coupon
 
@@ -680,17 +690,23 @@ class Buy2RequestApplication(GenericWSGIApplication):
         _, _, amount = get_plan_quantity_amount(entry)
         data['text-yui_3_17_2_1_1429898133902_207337-field'] = amount
 
-        opp_id = SalesforceAPI.lookup_opportunity(key)['Id']
-        sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
+        opportunity = SalesforceAPI.lookup_opportunity(key)
+        if opportunity:
+            opp_id = opportunity['Id']
+            opp_name = opportunity['Name']
+            sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
+        else:
+            opp_name = 'NONE'
+            sf_url = 'UNKNOWN'
         is_expired = entry.expiration_time < datetime.utcnow()
         SlackAPI.notify('*Buy Browse Event:* '
                 'Key: {0}, Opportunity: {1}, Name: {2} ({3}), '
                 'Org: {4}, Type: {5} {6} Expiration {7} Expired: {8}' \
-                .format(entry.key, SalesforceAPI.get_opportunity_name(entry),
-                entry.firstname + ' ' + entry.lastname, entry.email,
-                entry.organization, entry.hosting_type, sf_url,
-                to_localtime(entry.expiration_time).strftime("%x"),
-                is_expired))
+                .format(entry.key, opp_name,
+                        entry.firstname + ' ' + entry.lastname, entry.email,
+                        entry.organization, entry.hosting_type, sf_url,
+                        to_localtime(entry.expiration_time).strftime("%x"),
+                        is_expired))
 
         location = buy_url + dict_to_qs(data)
         raise exc.HTTPTemporaryRedirect(location=location)

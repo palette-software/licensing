@@ -9,6 +9,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from akiri.framework.sqlalchemy import get_session
+from stage import Stage
 from licensing import License
 
 TRIAL_DAYS = 14
@@ -33,8 +34,11 @@ def main():
 
     entry = License()
     entry.name = name
+    entry.email = name + "@palette-software.com"
+    entry.firstname = "Jack"
+    entry.lastname = "User"
     entry.key = license_key
-    entry.trial = True
+    entry.stageid = Stage.get_by_key('STAGE-VERIFIED')
     entry.expiration_time = datetime.utcnow() + timedelta(days=TRIAL_DAYS)
 
     session = get_session()

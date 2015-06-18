@@ -101,6 +101,7 @@ class License(Base):
 
     stage = relationship('Stage')
     product = relationship('Product')
+    billing = relationship('Billing', uselist=False)
 
     # FIXME: rename
     def istrial(self):
