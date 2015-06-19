@@ -32,7 +32,8 @@ import stripe
 # stripe.api_key = 'sk_test_ynEoVFrJuhuZ2cVmhCu0ePU4'
 stripe.api_key = 'sk_live_VQnPZ5WlUY0hgbYv5KsGUM80'
 
-DATABASE = 'postgresql://palette:TeStazu7@localhost/licensedb'
+# currently is set to 'trust' for the loopback interface so use the old pw.
+DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
 
 def time_from_today(hours=0, days=0, months=0):
     return datetime.utcnow() + \
@@ -149,10 +150,12 @@ class SupportApplication(GenericWSGIApplication):
         if 'key' not in req.params:
             # Return 404 instead of bad request to 'hide' this URL.
             return exc.HTTPNotFound()
-        entry = Support.find_active_port_by_key(req.params['key'])
+        entry = License.get_by_key(req.params['key'])
         if entry is None:
             raise exc.HTTPNotFound()
-        return {'port': entry.port}
+        if not entry.support or not entry.support.active:
+            raise exc.HTTPNotFound()
+        return {'port': entry.support.port}
 
 
 class ExpiredApplication(GenericWSGIApplication):
