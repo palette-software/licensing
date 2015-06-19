@@ -17,7 +17,7 @@ class Support(Base):
     port = Column(Integer, unique=True, nullable=False)
     active = Column(Boolean, nullable=False, default=False, server_default='0')
 
-    parent = relationship("License", uselist=False)
+    parent = relationship("License", uselist=False, backref="support")
 
     @classmethod
     def find_active_port_by_key(cls, key):

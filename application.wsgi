@@ -15,12 +15,13 @@ from akiri.framework.middleware.sqlalchemy import SessionMiddleware
 from akiri.framework.sqlalchemy import create_engine, get_session
 from akiri.framework.util import required_parameters
 
+# pylint: disable=unused-import
 from billing import Billing
 from stage import Stage
 from licensing import License
+from support import Support
 from system import System
 from product import Product
-from support import Support
 from utils import get_netloc, hostname_only, domain_only, to_localtime
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
@@ -153,6 +154,9 @@ class SupportApplication(GenericWSGIApplication):
         entry = License.get_by_key(req.params['key'])
         if entry is None:
             raise exc.HTTPNotFound()
+        session = get_session()
+        entry.support_contact_time = datetime.utcnow()
+        session.commit()
         if not entry.support or not entry.support.active:
             raise exc.HTTPNotFound()
         return {'port': entry.support.port}
