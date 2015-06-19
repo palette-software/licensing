@@ -32,7 +32,7 @@ import stripe
 # stripe.api_key = 'sk_test_ynEoVFrJuhuZ2cVmhCu0ePU4'
 stripe.api_key = 'sk_live_VQnPZ5WlUY0hgbYv5KsGUM80'
 
-DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
+DATABASE = 'postgresql://palette:TeStazu7@localhost/licensedb'
 
 def time_from_today(hours=0, days=0, months=0):
     return datetime.utcnow() + \
