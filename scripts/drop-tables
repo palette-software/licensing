@@ -1,0 +1,7 @@
+#!/bin/bash
+# script to drop tables from postgres
+
+psql -U palette -d licensedb -h localhost << EOF
+drop schema public cascade;
+create schema public;
+EOF
