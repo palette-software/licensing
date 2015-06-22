@@ -12,7 +12,7 @@ class Billing(Base):
     license_id = Column(Integer, ForeignKey("license.id"),
                         unique=True, nullable=False)
     stripeid = Column(String)
-    amount = Column(Numeric)
+    amount = Column(Numeric) # FIXME: currently redundant with license.
 
     firstname = Column(String)
     lastname = Column(String)

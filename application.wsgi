@@ -758,7 +758,7 @@ class Buy2RequestApplication(GenericWSGIApplication):
                                               plan=plan,
                                               quantity=quantity,
                                               email=entry.email)
-        entry.billing.amount = amount
+        entry.amount = amount
         entry.billing.stripeid = customer.id
 
         entry.expiration_time = time_from_today(

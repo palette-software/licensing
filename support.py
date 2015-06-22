@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from akiri.framework.sqlalchemy import Base, get_session
 
 from sqlalchemy import Column, Integer, Boolean, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.exc import NoResultFound
 
 from licensing import License
@@ -17,7 +17,8 @@ class Support(Base):
     port = Column(Integer, unique=True, nullable=False)
     active = Column(Boolean, nullable=False, default=False, server_default='0')
 
-    parent = relationship("License", uselist=False, backref="support")
+    parent = relationship("License", uselist=False,
+                          backref=backref('support', uselist=False))
 
     @classmethod
     def find_active_port_by_key(cls, key):

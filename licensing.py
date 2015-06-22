@@ -4,7 +4,7 @@ from datetime import datetime
 from akiri.framework.sqlalchemy import Base, get_session
 
 from sqlalchemy import Column, func
-from sqlalchemy import Boolean, String, Integer, DateTime
+from sqlalchemy import Boolean, String, Integer, DateTime, Numeric
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.exc import NoResultFound
@@ -78,6 +78,7 @@ class License(Base):
     secret_key = Column(String)
 
     salesforceid = Column(String)
+    amount = Column(Numeric) # FIXME: move to billing?
 
     # Last connection from the support functionality
     support_contact_time = Column(DateTime)
