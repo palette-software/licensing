@@ -17,6 +17,7 @@ FILES := application.wsgi \
 	support.py \
 	stage.py \
         product.py \
+        server_info.py \
 	system.py \
 	utils.py
 

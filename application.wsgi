@@ -22,6 +22,8 @@ from licensing import License
 from support import Support
 from system import System
 from product import Product
+from server_info import ServerInfo
+
 from utils import get_netloc, hostname_only, domain_only, to_localtime
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
@@ -318,6 +320,22 @@ class LicenseApplication(GenericWSGIApplication):
         entry.contact_time = datetime.utcnow()
         session = get_session()
         session.commit()
+
+        details = ['palette-version',
+                   'tableau-version', 'tableau-bitness',
+                   'processor-type', 'processor-count', 'processor-bitness']
+        for i in details:
+            prop = ServerInfo.get_by_license(entry.id, i)
+            if prop is None:
+                prop = ServerInfo()
+                prop.licenseid = entry.id
+                prop.key = i
+                prop.value = req.params[i]
+                session.add(prop)
+                session.commit()
+            else:
+                prop.value = req.params[i]
+                session.commit()
 
         return {'id': entry.id,
                 'trial': entry.istrial(),
