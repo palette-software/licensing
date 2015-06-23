@@ -13,6 +13,7 @@ from sqlalchemy.orm.exc import NoResultFound
 # pylint: disable=unused-import
 from stage import Stage
 from product import Product
+from billing import Billing
 
 class License(Base):
     # pylint: disable=no-init
