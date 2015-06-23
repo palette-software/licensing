@@ -184,6 +184,9 @@ class BotoAPI(object):
         """
         bucket_name = BUCKET_PREFIX + name
         bucket = None
+        if region is None:
+            region = 'us-east-1'
+
         try:
             s3_conn = boto.s3.connect_to_region(region)
             bucket = s3_conn.get_bucket(bucket_name)
