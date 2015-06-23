@@ -22,8 +22,6 @@ FILES := application.wsgi \
 	utils.py
 
 SCRIPTS := \
-	license-start \
-	license-start-trial \
 	support-connect \
 	support-define-port \
 	license-cleanup \
