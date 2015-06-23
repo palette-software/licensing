@@ -33,9 +33,8 @@ def delete_from_sf(entry):
     print 'Deleting Opportunity \'{0}\''\
            .format(SalesforceAPI.get_opportunity_name(entry))
 
-    SalesforceAPI.delete_contact(entry)
-
-    SalesforceAPI.delete_account(entry)
+    # SalesforceAPI.delete_contact(entry)
+    # SalesforceAPI.delete_account(entry)
 
     SalesforceAPI.delete_opportunity(entry)
 
