@@ -8,7 +8,13 @@ logger = logging.getLogger('licensing')
 class SendwithusAPI(object):
 
     @classmethod
-    def subscribe_user(cls, mailid, from_address, to_address, data):
+    def subscribe_user(cls, swu_id, from_address, to_address, data):
+        mailid = System.get_by_key(swu_id)
+        # if the given message id is disabled continue
+        if mailid is None or mailid.lower() == "none":
+            logger.info('Not sending message for %s', swu_id)
+            return
+
         apikey = System.get_by_key('SENDWITHUS-APIKEY')
         api = sendwithus.api(api_key=apikey)
         response = api.start_on_drip_campaign(
@@ -21,7 +27,13 @@ class SendwithusAPI(object):
                           to_address, mailid, response.content)
 
     @classmethod
-    def send_message(cls, mailid, from_address, to_address, data):
+    def send_message(cls, swu_id, from_address, to_address, data):
+        mailid = System.get_by_key(swu_id)
+        # if the given message id is disabled continue
+        if mailid is None or mailid.lower() == "none":
+            logger.info('Not sending message for %s', swu_id)
+            return
+
         apikey = System.get_by_key('SENDWITHUS-APIKEY')
         api = sendwithus.api(api_key=apikey)
         response = api.send(

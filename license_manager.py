@@ -58,7 +58,7 @@ class LicenseManager(object):
             logger.info('Trial requests expired {0}'.format(i))
             License.change_stage(i, not_installed)
             SalesforceAPI.update_opportunity(i)
-            SendwithusAPI.subscribe_user(not_installed,
+            SendwithusAPI.subscribe_user('SENDWITHUS-TRIAL-EXPIRED-ID',
                                          from_email,
                                          i.email,
                                          populate_email_data(i))
@@ -68,7 +68,7 @@ class LicenseManager(object):
             logger.info('Expired Registrations {0}'.format(i))
             License.change_stage(i, no_response)
             SalesforceAPI.update_opportunity(i)
-            SendwithusAPI.subscribe_user(no_response,
+            SendwithusAPI.subscribe_user('SENDWITHUS-TRIAL-EXPIRED-ID',
                                          from_email,
                                          i.email,
                                          populate_email_data(i))
@@ -78,7 +78,7 @@ class LicenseManager(object):
             logger.info('Expired Trials {0}'.format(i))
             License.change_stage(i, expired)
             SalesforceAPI.update_opportunity(i)
-            SendwithusAPI.subscribe_user(expired,
+            SendwithusAPI.subscribe_user('SENDWITHUS-TRIAL-EXPIRED-ID',
                                          from_email,
                                          i.email,
                                          populate_email_data(i))
@@ -88,7 +88,7 @@ class LicenseManager(object):
             logger.info('Expired Closed Won {0}'.format(i))
             License.change_stage(i, renewal)
             SalesforceAPI.update_opportunity(i)
-            SendwithusAPI.subscribe_user(renewal,
+            SendwithusAPI.subscribe_user('SENDWITHUS-LICENSE-EXPIRED-ID',
                                          from_email,
                                          i.email,
                                          populate_email_data(i))
@@ -149,11 +149,10 @@ class LicenseManager(object):
                     sf_url))
 
             # subscribe the user to the trial workflow if not already
-            SendwithusAPI.subscribe_user(
-                      System.get_by_key('SENDWITHUS-LICENSE-START-ID'),
-                      'hello@palette-software.com',
-                      entry.email,
-                      populate_email_data(entry))
+            SendwithusAPI.subscribe_user('SENDWITHUS-LICENSE-START-ID',
+                                         'hello@palette-software.com',
+                                         entry.email,
+                                         populate_email_data(entry))
 
             #SendwithusAPI.send_message(
             #              System.get_by_key('SENDWITHUS-BUY-NOTIFICATION-ID'),

@@ -231,17 +231,16 @@ class RegisterApplication(GenericWSGIApplication):
                     to_localtime(entry.expiration_time).strftime("%x")))
 
         # send the user an email to allow them to verify their email address
-        mailid = System.get_by_key('SENDWITHUS-REGISTERED-UNVERIFIED-ID')
         redirect_url = System.get_by_key('REGISTER-VERIFY-URL')
         url = '{0}?key={1}'.format(redirect_url, entry.key)
-        SendwithusAPI.send_message(mailid,
-                                     'hello@palette-software.com',
-                                     entry.email,
-                                     {'firstname':entry.firstname,
-                                      'lastname':entry.lastname,
-                                      'key':entry.key,
-                                      'url':url
-                                     })
+        SendwithusAPI.send_message('SENDWITHUS-REGISTERED-UNVERIFIED-ID',
+                                   'hello@palette-software.com',
+                                   entry.email,
+                                   {'firstname':entry.firstname,
+                                    'lastname':entry.lastname,
+                                    'key':entry.key,
+                                    'url':url
+                                   })
 
         logger.info('Register unvalidated success for %s', entry.email)
 
@@ -429,29 +428,26 @@ class TrialRequestApplication(GenericWSGIApplication):
 
         # subscribe the user to the trial list
         if entry.hosting_type == TrialRequestApplication.PALETTE_PRO:
-            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-PRO-ID')
-            SendwithusAPI.subscribe_user(mailid,
-                                     'hello@palette-software.com',
-                                     entry.email,
-                                     populate_email_data(entry))
+            SendwithusAPI.subscribe_user('SENDWITHUS-TRIAL-REQUESTED-PRO-ID',
+                                         'hello@palette-software.com',
+                                         entry.email,
+                                         populate_email_data(entry))
 
             AnsibleAPI.launch_instance(entry,
-                     System.get_by_key('PALETTECLOUD-LAUNCH-SUCCESS-ID'),
-                     System.get_by_key('PALETTECLOUD-LAUNCH-FAIL-ID'))
+                                       'PALETTECLOUD-LAUNCH-SUCCESS-ID',
+                                       'PALETTECLOUD-LAUNCH-FAIL-ID')
             url = System.get_by_key('TRIAL-REQUEST-REDIRECT-PRO-URL')
 
         else:
-            mailid = System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-ENT-ID')
-            SendwithusAPI.subscribe_user(mailid,
-                                     'hello@palette-software.com',
-                                     entry.email,
-                                     populate_email_data(entry))
-            mailid = \
-                System.get_by_key('SENDWITHUS-TRIAL-REQUESTED-ENT-INTERNAL-ID')
-            SendwithusAPI.send_message(mailid,
-                                     'licensing@palette-software.com',
-                                     'support@palette-software.com',
-                                     populate_email_data(entry))
+            SendwithusAPI.subscribe_user('SENDWITHUS-TRIAL-REQUESTED-ENT-ID',
+                                         'hello@palette-software.com',
+                                         entry.email,
+                                         populate_email_data(entry))
+            SendwithusAPI\
+               .send_message('SENDWITHUS-TRIAL-REQUESTED-ENT-INTERNAL-ID',
+                             'licensing@palette-software.com',
+                             'support@palette-software.com',
+                             populate_email_data(entry))
             url = System.get_by_key('TRIAL-REQUEST-REDIRECT-ENT-URL')
 
         sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
@@ -517,11 +513,10 @@ class TrialRegisterApplication(GenericWSGIApplication):
         # update the opportunity
         SalesforceAPI.update_opportunity(entry)
         # subscribe the user to the trial workflow if not already
-        SendwithusAPI.subscribe_user(
-                        System.get_by_key('SENDWITHUS-TRIAL-REGISTERED-ID'),
-                        'hello@palette-software.com',
-                        entry.email,
-                        populate_email_data(entry))
+        SendwithusAPI.subscribe_user('SENDWITHUS-TRIAL-REGISTERED-ID',
+                                     'hello@palette-software.com',
+                                     entry.email,
+                                     populate_email_data(entry))
 
         logger.info('Trial Registration for key {0} success. Expiration {1}'\
               .format(key, entry.expiration_time))
@@ -595,11 +590,10 @@ class TrialStartApplication(GenericWSGIApplication):
             # update the opportunity
             opp_id = SalesforceAPI.update_opportunity(entry)
             # subscribe the user to the trial workflow if not already
-            SendwithusAPI.subscribe_user(
-                         System.get_by_key('SENDWITHUS-TRIAL-STARTED-ID'),
-                         'hello@palette-software.com',
-                         entry.email,
-                         populate_email_data(entry))
+            SendwithusAPI.subscribe_user('SENDWITHUS-TRIAL-STARTED-ID',
+                                         'hello@palette-software.com',
+                                         entry.email,
+                                         populate_email_data(entry))
 
             sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
             SlackAPI.notify('*{0}* '
@@ -791,17 +785,15 @@ class Buy2RequestApplication(GenericWSGIApplication):
         opp_id = SalesforceAPI.update_opportunity(entry)
 
         # subscribe the user to the trial workflow if not already
-        SendwithusAPI.subscribe_user(
-                      System.get_by_key('SENDWITHUS-CLOSED-WON-ID'),
-                      'hello@palette-software.com',
-                      entry.email,
-                      populate_email_data(entry))
+        SendwithusAPI.subscribe_user('SENDWITHUS-CLOSED-WON-ID',
+                                     'hello@palette-software.com',
+                                     entry.email,
+                                     populate_email_data(entry))
 
-        SendwithusAPI.send_message(
-                      System.get_by_key('SENDWITHUS-BUY-NOTIFICATION-ID'),
-                      'licensing@palette-software.com',
-                      'hello@palette-software.com',
-                      populate_buy_email_data(entry))
+        SendwithusAPI.send_message('SENDWITHUS-BUY-NOTIFICATION-ID',
+                                   'licensing@palette-software.com',
+                                   'hello@palette-software.com',
+                                    populate_buy_email_data(entry))
 
         try:
             # This should only fail in testing, where there is no op.
