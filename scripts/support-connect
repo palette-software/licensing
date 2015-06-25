@@ -44,7 +44,10 @@ def connect(session, entry):
     time.sleep(0.5)
     s.close()
 
-    child.interact()
+    if not child.isalive():
+        print child.read()
+    else:
+        child.interact()
     child.close()
 
 def main():
