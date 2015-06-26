@@ -34,7 +34,8 @@ class ServerInfo(Base, BaseMixin):
         session = get_session()
         try:
             return session.query(ServerInfo)\
-               .filter(ServerInfo.key == key and ServerInfo.licenseid == lid)\
+               .filter(ServerInfo.key == key)\
+               .filter(ServerInfo.licenseid == lid)\
                .one()
         except NoResultFound:
             return None
