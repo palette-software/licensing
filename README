@@ -5,10 +5,10 @@ Instllation steps
 
 Database Setup:
 
-sudo apt-get install -y postgresql python-psycopg2 python-dateutil
+sudo apt-get install -y postgresql python-psycopg2 python-dateutil python-pip
 sudo -u postgres createuser --superuser palette
 sudo -u postgres createuser --superuser $USER
-sudo -u postgres createdb licensing
+sudo -u postgres createdb licensedb
 
 Set the password for palette:
     sudo -u postgres psql
