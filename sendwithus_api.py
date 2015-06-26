@@ -27,7 +27,7 @@ class SendwithusAPI(object):
                           to_address, mailid, response.content)
 
     @classmethod
-    def send_message(cls, swu_id, from_address, to_address, data):
+    def send_message(cls, swu_id, from_address, to_address, data, files=None):
         mailid = System.get_by_key(swu_id)
         # if the given message id is disabled continue
         if mailid is None or mailid.lower() == "none":
@@ -40,7 +40,8 @@ class SendwithusAPI(object):
             email_id=mailid,
             email_data=data,
             recipient={'address':to_address},
-            sender={'address':from_address})
+            sender={'address':from_address},
+            files=files)
         if response.status_code != 200:
             logger.error('Error sending message %s to user %s: %s',
                          mailid, to_address, response.content)

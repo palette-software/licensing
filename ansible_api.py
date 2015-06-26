@@ -1,6 +1,7 @@
 import logging
 import subprocess
 import threading
+import tempfile
 
 from akiri.framework.sqlalchemy import get_session
 
@@ -39,18 +40,23 @@ def run_process(entry, success_mailid, fail_mailid):
     if proc.returncode != 0:
         logger.error('Problem launching a Palette Pro Instance {0} code {1}'\
                     .format(entry.subdomain, proc.returncode))
-        logger.error('out %s err %s', out, err)
+        logger.error('stdout: %s stderr: %s', out, err)
 
+        temp = tempfile.NamedTemporaryFile()
+        temp.write(out)
+        temp.seek(0)
         SendwithusAPI.send_message(fail_mailid,
                     'licensing@palette-software.com',
                     'diagnostics@palette-software.com', data={
-                    'subdomain':entry.subdomain,
-                    'firstname':entry.firstname,
-                    'lastname':entry.lastname})
+                        'subdomain':entry.subdomain,
+                        'firstname':entry.firstname,
+                        'lastname':entry.lastname,
+                    }, files=[temp])
+        temp.close()
 
-        SlackAPI.notify('Failed to launch Palette Pro Instance. '
-                'Opportunity: {0}'.format(
-                SalesforceAPI.get_opportunity_name(entry)))
+        SlackAPI.notify('***Failed to launch Palette Pro Instance.*** '
+                'Opportunity: {0}\n{1}'.format(
+                SalesforceAPI.get_opportunity_name(entry), out))
 
         #SendwithusAPI.send_message(fail_mailid,
         #            'hello@palette-software.com',
