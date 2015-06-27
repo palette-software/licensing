@@ -15,12 +15,14 @@ from stage import Stage
 from licensing import License
 from system import System
 from product import Product
-from utils import get_netloc, domain_only, time_from_today, translate_values
+from utils import get_netloc, domain_only, translate_values
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
 
 logger = logging.getLogger('licensing')
+
+# pylint: disable=too-many-arguments
 
 def populate_email_data(entry):
     """ creates a dict that contains the fileds to put passed to trial emails
@@ -110,7 +112,8 @@ class LicenseManager(object):
         'name':'name'
     }
     @classmethod
-    def new_license(cls, params):
+    def new_license(cls, params, product, stage,
+                         expiration, mailid, send_email=True):
         """ Handle licensing for a new user
         """
         session = get_session()
@@ -126,14 +129,14 @@ class LicenseManager(object):
                     entry.name, entry.firstname, entry.lastname, entry.email)
 
             entry.key = str(uuid.uuid4())
-            entry.stageid = Stage.get_by_key('STAGE-CLOSED-WON').id
+            entry.stageid = Stage.get_by_key(stage).id
             entry.registration_start_time = datetime.utcnow()
-            entry.expiration_time = time_from_today(months=12)
+            entry.expiration_time = expiration
             entry.organization = get_netloc(domain_only(entry.email)).lower()
             entry.website = entry.organization
             entry.subdomain = params['name']
             entry.name = entry.subdomain
-            entry.productid = Product.get_by_key('PALETTE-ENT').id
+            entry.productid = Product.get_by_key(product).id
             entry.salesforceid = SalesforceAPI.new_opportunity(entry)
             session.add(entry)
             session.commit()
@@ -148,20 +151,22 @@ class LicenseManager(object):
                     entry.email,
                     sf_url))
 
-            # subscribe the user to the trial workflow if not already
-            SendwithusAPI.subscribe_user('SENDWITHUS-LICENSE-START-ID',
-                                         'hello@palette-software.com',
-                                         entry.email,
-                                         populate_email_data(entry))
+            if send_email:
+                # subscribe the user to the trial workflow if not already
+                SendwithusAPI.subscribe_user(mailid,
+                                             'hello@palette-software.com',
+                                             entry.email,
+                                             populate_email_data(entry))
 
-            #SendwithusAPI.send_message(
-            #              System.get_by_key('SENDWITHUS-BUY-NOTIFICATION-ID'),
-            #              'licensing@palette-software.com',
-            #              'hello@palette-software.com',
-            #               populate_email_data(entry))
+            SendwithusAPI.send_message(mailid,
+                                       'licensing@palette-software.com',
+                                       'hello@palette-software.com',
+                                       populate_email_data(entry))
 
             logger.info('Generated new License Name {0} Key {1} success.'\
                        .format(entry.name, entry.key))
+
+            return entry
 
 # pylint: disable=too-many-branches
     @classmethod

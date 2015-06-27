@@ -54,7 +54,7 @@ def run_process(entry, success_mailid, fail_mailid):
                     }, files=[temp])
         temp.close()
 
-        SlackAPI.notify('***Failed to launch Palette Pro Instance.*** '
+        SlackAPI.notify('*Failed to launch Palette Pro Instance.* '
                 'Opportunity: {0}\n{1}'.format(
                 SalesforceAPI.get_opportunity_name(entry), out))
 
@@ -66,9 +66,9 @@ def run_process(entry, success_mailid, fail_mailid):
         #            'lastname':entry.lastname})
 
     else:
-        logger.info('*Succesfully launched instance {0}*'.\
+        logger.info('Succesfully launched instance {0}'.\
                     format(entry.subdomain))
-        logger.error('out %s err %s', out, err)
+        logger.error('stdout: %s stderr: %s', out, err)
         email_data = {'license':entry.key,
                   'firstname':entry.firstname,
                   'lastname':entry.lastname,
@@ -84,7 +84,7 @@ def run_process(entry, success_mailid, fail_mailid):
                     entry.email,
                     data=email_data)
 
-        SlackAPI.notify('Succesfully launched Palette Pro Instance. '
+        SlackAPI.notify('*Succesfully launched Palette Pro Instance.* '
                 'Opportunity: {0}'.format(
                 SalesforceAPI.get_opportunity_name(entry)))
 

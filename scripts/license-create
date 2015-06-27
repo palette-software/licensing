@@ -7,11 +7,12 @@ import logging
 
 from akiri.framework.sqlalchemy import create_engine
 
+from utils import time_from_today
 from license_manager import LicenseManager
+from ansible_api import AnsibleAPI
 
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
 
-# pylint: disable=invalid-name
 database = DATABASE
 create_engine(database, echo=False, pool_size=20, max_overflow=30)
 
@@ -33,6 +34,12 @@ if __name__ == '__main__':
     parser.add_argument('--fullname', required=True)
     parser.add_argument('--name', required=True)
     parser.add_argument('--email', required=True)
+    parser.add_argument('--product', required=True, choices=['PALETTE-PRO',
+                                                             'PALETTE-ENT'])
+    parser.add_argument('--send_email', required=False, action='store_true')
+    parser.set_defaults(send_email=False)
+    parser.add_argument('--launch', required=False, action='store_true')
+    parser.set_defaults(launch=True)
     args = parser.parse_args()
 
     parts = args.fullname.split(' ')
@@ -44,4 +51,23 @@ if __name__ == '__main__':
             'email':args.email,
             'name':args.name}
 
-    LicenseManager.new_license(data)
+    if args.product == 'PALETTE-PRO':
+        mailid = 'SENDWITHUS-TRIAL-REQUESTED-PRO-ID'
+    else:
+        mailid = 'SENDWITHUS-TRIAL-REQUESTED-ENT-ID'
+
+    entry = LicenseManager.new_license(data,
+                                       product=args.product,
+                                       stage='STAGE-TRIAL-REQUESTED',
+                                       expiration=time_from_today(months=1),
+                                       mailid=mailid,
+                                       send_email=args.send_email)
+    if entry is None:
+        sys.exit(1)
+
+    if args.product == 'PALETTE-PRO' and args.launch:
+        AnsibleAPI.launch_instance(entry,
+                                  'PALETTECLOUD-LAUNCH-SUCCESS-ID',
+                                  'PALETTECLOUD-LAUNCH-FAIL-ID')
+
+    sys.exit(0)

@@ -5,6 +5,8 @@ from system import System
 
 logger = logging.getLogger('licensing')
 
+# pylint: disable=too-many-arguments
+
 class SendwithusAPI(object):
 
     @classmethod
