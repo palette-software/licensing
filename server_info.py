@@ -5,6 +5,7 @@ from akiri.framework.sqlalchemy import Base, get_session
 from sqlalchemy.schema import ForeignKey, UniqueConstraint
 
 from sqlalchemy import Column, String, Integer, DateTime, func
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm.exc import NoResultFound
 
 from mixin import BaseMixin
@@ -19,7 +20,7 @@ class ServerInfo(Base, BaseMixin):
     id = Column(Integer, autoincrement=True, primary_key=True)
 
     # id in licensing table
-    licenseid = Column(Integer, ForeignKey("license.id"), primary_key=True)
+    licenseid = Column(Integer, ForeignKey("license.id", ondelete='CASCADE'), primary_key=True)
     key = Column(String, primary_key=True, nullable=False)
     value = Column(String, nullable=False)
 
