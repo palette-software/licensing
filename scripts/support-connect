@@ -24,7 +24,8 @@ def connect(session, entry):
     session.commit()
 
     port = entry.port
-    cmd = 'ssh -p ' + str(port) + ' ' + USER + '@localhost'
+    cmd = 'ssh -p ' + str(port) + ' -o StrictHostKeyChecking=no ' + \
+                                                        USER + '@localhost'
     verbose(cmd)
 
     while True:
