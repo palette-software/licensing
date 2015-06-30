@@ -122,23 +122,25 @@ class SalesforceAPI(object):
                 # then delete the lead
                 cls.delete_lead(lead['Id'])
 
-        if fields is None:
-            fields = {'Firstname':data.firstname,
-                      'Lastname':data.lastname,
-                      'Email':data.email,
-                      'Phone':data.phone,
-                      'AccountId':accountid,
-                      'Admin_Role__c':data.admin_role}
+            if fields is None:
+                fields = {'Firstname':data.firstname,
+                          'Lastname':data.lastname,
+                          'Email':data.email,
+                          'Phone':data.phone,
+                          'AccountId':accountid,
+                          'Admin_Role__c':data.admin_role}
 
-        # create the new contact if it doesnt exist and no lead exists
-        accountid = cls.lookup_or_create_account(data)
+            # create the new contact if it doesnt exist and no lead exists
+            accountid = cls.lookup_or_create_account(data)
 
-        conn = cls._get_connection()
-        contact = conn.Contact.create(fields)
-        contactid = contact['id']
+            conn = cls._get_connection()
+            contact = conn.Contact.create(fields)
+            contactid = contact['id']
 
-        logger.info('Created Contact Name %s %s Id %s',
-                data.firstname, data.lastname, contactid)
+            logger.info('Created Contact Name %s %s Id %s',
+                        data.firstname, data.lastname, contactid)
+        else:
+            logger.info('Contact Id already exists %s', contactid)
 
         return contactid
 
