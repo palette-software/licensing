@@ -50,3 +50,31 @@ class ServerInfo(Base, BaseMixin):
         except NoResultFound:
             return None
 
+    @classmethod
+    def upsert(cls, licenseid, details):
+        session = get_session()
+        for i in details.keys():
+            prop = ServerInfo.get_by_license(licenseid, i)
+            if prop is None:
+                prop = ServerInfo()
+                prop.licenseid = licenseid
+                prop.key = i
+                prop.value = details[i]
+                session.add(prop)
+                session.commit()
+            else:
+                prop.value = details[i]
+                session.commit()
+
+    @classmethod
+    def get_dict_by_licenseid(cls, lid):
+        session = get_session()
+        try:
+            rows = session.query(ServerInfo)\
+               .filter(ServerInfo.licenseid == lid).all()
+            keys = [i.key for i in rows]
+            values = [i.value for i in rows]
+            result = dict(zip(keys, values))
+            return result
+        except NoResultFound:
+            return None

@@ -320,21 +320,14 @@ class LicenseApplication(GenericWSGIApplication):
         session = get_session()
         session.commit()
 
-        details = ['palette-version',
-                   'tableau-version', 'tableau-bitness',
-                   'processor-type', 'processor-count', 'processor-bitness']
-        for i in details:
-            prop = ServerInfo.get_by_license(entry.id, i)
-            if prop is None:
-                prop = ServerInfo()
-                prop.licenseid = entry.id
-                prop.key = i
-                prop.value = req.params[i]
-                session.add(prop)
-                session.commit()
-            else:
-                prop.value = req.params[i]
-                session.commit()
+        keys = ['palette-version',
+                'tableau-version', 'tableau-bitness',
+                'processor-type', 'processor-count', 'processor-bitness']
+
+        values = [req.params[i] for i in keys]
+        details = dict(zip(keys, values))
+        ServerInfo.upsert(entry.id, details)
+        SalesforceAPI.update_opportunity_details(entry, details)
 
         return {'id': entry.id,
                 'trial': entry.istrial(),

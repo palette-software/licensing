@@ -248,7 +248,8 @@ class SalesforceAPI(object):
                         data.key, Stage.get_by_id(data.stageid).name)
 
             oppid = opp['records'][0]['Id']
-            row = {'StageName':Stage.get_by_id(data.stageid).name,
+            row = {'Palette_Domain_ID__c':data.id,
+                    'StageName':Stage.get_by_id(data.stageid).name,
                     'CloseDate':data.expiration_time.isoformat(),
                     'Expiration_Date__c':data.expiration_time.isoformat(),
                     'Tableau_App_License_Type__c':data.type,
@@ -256,6 +257,8 @@ class SalesforceAPI(object):
                     'System_ID__c':data.system_id,
                     'Hosting_Type__c':data.hosting_type,
                     'AWS_Region__c':data.aws_zone,
+                    'Access_Key__c':data.access_key,
+                    'Secret_Access_Key__c':data.secret_key,
                     'Palette_Cloud_subdomain__c':data.subdomain,
                     'Promo_Code__c':data.promo_code}
             if data.amount is not None:
@@ -272,8 +275,33 @@ class SalesforceAPI(object):
                 row['License_Start_Date_Time__c'] = \
                    data.license_start_time.isoformat()
             conn.Opportunity.update(oppid, row)
+
             return oppid
         return None
+
+    @classmethod
+    def update_opportunity_details(cls, data, details):
+        """ Updates the details that are usually stored in the server
+            info table onto Salesforce
+        """
+        conn = cls._get_connection()
+        sql = "SELECT Name, id FROM Opportunity " +\
+              "WHERE Palette_License_Key__c='{0}'"
+        opp = conn.query(sql.format(data.key))
+        if opp is not None and opp['totalSize'] == 1:
+            oppid = opp['records'][0]['Id']
+
+            field_map = {'palette-version':'Palette_Version__c',
+                         'tableau-version':'Tableau_App_Version__c',
+                         'tableau-bitness':'Tableau_App_Bit__c',
+                         'processor-type':'Processor_Type__c',
+                         'processor-count':'Processor_Count__c',
+                         'processor-bitness':'Processor_Bitness__c'}
+            row = {}
+            for i in details.keys():
+                if i in field_map:
+                    row[field_map[i]] = details[i]
+            conn.Opportunity.update(oppid, row)
 
     @classmethod
     def delete_opportunity(cls, data):
