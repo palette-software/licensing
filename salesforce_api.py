@@ -296,7 +296,8 @@ class SalesforceAPI(object):
                          'tableau-bitness':'Tableau_App_Bit__c',
                          'processor-type':'Processor_Type__c',
                          'processor-count':'Processor_Count__c',
-                         'processor-bitness':'Processor_Bitness__c'}
+                         'processor-bitness':'Processor_Bitness__c',
+                         'primary-os-version':'Tableau_OS_Version__c'}
             row = {}
             for i in details.keys():
                 if i in field_map:

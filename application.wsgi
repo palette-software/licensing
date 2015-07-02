@@ -321,7 +321,7 @@ class LicenseApplication(GenericWSGIApplication):
         session.commit()
 
         keys = ['palette-version',
-                'tableau-version', 'tableau-bitness',
+                'tableau-version', 'tableau-bitness', 'primary-os-version',
                 'processor-type', 'processor-count', 'processor-bitness']
 
         values = [req.params[i] for i in keys]
