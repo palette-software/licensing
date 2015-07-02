@@ -19,6 +19,7 @@ from utils import get_netloc, domain_only, translate_values
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
+from boto_api import BotoAPI
 
 logger = logging.getLogger('licensing')
 
@@ -137,7 +138,11 @@ class LicenseManager(object):
             entry.subdomain = params['name']
             entry.name = entry.subdomain
             entry.productid = Product.get_by_key(product).id
+            if entry.productid == Product.get_by_key('PALETTE-PRO').id:
+                entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
+                entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
             entry.salesforceid = SalesforceAPI.new_opportunity(entry)
+
             session.add(entry)
             session.commit()
 
