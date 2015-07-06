@@ -316,6 +316,8 @@ class LicenseApplication(GenericWSGIApplication):
                          .format(key, license_quantity, entry.n))
         entry.n = license_quantity
 
+        logger.info('Updating license information for %s', key)
+
         entry.contact_time = datetime.utcnow()
         session = get_session()
         session.commit()
@@ -324,8 +326,10 @@ class LicenseApplication(GenericWSGIApplication):
                 'tableau-version', 'tableau-bitness', 'primary-os-version',
                 'processor-type', 'processor-count', 'processor-bitness']
 
-        values = [req.params[i] for i in keys]
-        details = dict(zip(keys, values))
+        details = {}
+        for i in keys:
+            if req.params.get(i) is not None:
+                details[i] = req.params.get(i)
         ServerInfo.upsert(entry.id, details)
         SalesforceAPI.update_opportunity_details(entry, details)
 
