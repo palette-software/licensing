@@ -140,12 +140,9 @@ class BotoAPI(object):
         return keys.access_key_id, keys.secret_access_key
 
     @classmethod
-    def terminate_instance(cls, name, region):
-        """ Terminates an instance on AWS
+    def get_instance_by_name(cls, name, region):
+        """ Get an instance id by name and region
         """
-        if region is None:
-            region = 'us-east-1'
-
         conn = ec2.connect_to_region(region)
         reservations = conn.get_all_reservations()
         instances = [i for r in reservations for i in r.instances]
@@ -154,11 +151,21 @@ class BotoAPI(object):
             if "Name" in i.tags and name == i.tags['Name']:
                 item = i.id
                 break
+        return item
 
+    @classmethod
+    def terminate_instance(cls, name, region):
+        """ Terminates an instance on AWS
+        """
+        if region is None:
+            region = 'us-east-1'
+
+        item = cls.get_instance_by_name(name, region)
         if item is not None:
+            conn = ec2.connect_to_region(region)
             conn.terminate_instances(instance_ids=item)
         else:
-            print 'Could not find instance named \'{0}\' on AWS'.format(name)
+            logger.error('Could not find instance named \'%s\' on AWS', name)
 
     @classmethod
     def delete_user(cls, name):
@@ -176,7 +183,7 @@ class BotoAPI(object):
 
             iam.delete_user(user_name)
         except boto.exception.BotoServerError as error:
-            print error.message
+            logger.error(error.message)
 
     @classmethod
     def delete_bucket(cls, name, region):
@@ -191,8 +198,8 @@ class BotoAPI(object):
             s3_conn = boto.s3.connect_to_region(region)
             bucket = s3_conn.get_bucket(bucket_name)
         except boto.exception.S3ResponseError:
-            print 'The specified bucket \'{0}\' does not exist'\
-                  .format(bucket_name)
+            logger.error('The specified bucket \'%s\' does not exist',
+                         bucket_name)
 
         if bucket is not None:
             s3_conn.delete_bucket(bucket)

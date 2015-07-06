@@ -7,9 +7,11 @@ from akiri.framework.sqlalchemy import get_session
 
 from utils import str2bool
 from system import System
+from licensing import License
 from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
 from salesforce_api import SalesforceAPI
+from boto_api import BotoAPI
 
 logger = logging.getLogger('licensing')
 
@@ -69,6 +71,15 @@ def run_process(entry, success_mailid, fail_mailid):
         logger.info('Succesfully launched instance {0}'.\
                     format(entry.subdomain))
         logger.error('stdout: %s stderr: %s', out, err)
+
+        # save the instance id
+        session = get_session()
+        item = License.get_by_key(entry.key)
+        item.instance_id = BotoAPI.get_instance_by_name(entry.name,
+                                                        entry.aws_zone)
+        session.commit()
+
+        # send an email
         email_data = {'license':entry.key,
                   'firstname':entry.firstname,
                   'lastname':entry.lastname,

@@ -78,6 +78,7 @@ class License(Base):
     aws_zone = Column(String) # AWS availability zone
     access_key = Column(String)
     secret_key = Column(String)
+    instance_id = Column(String)
 
     salesforceid = Column(String)
     amount = Column(Numeric) # FIXME: move to billing?
