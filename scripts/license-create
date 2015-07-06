@@ -37,9 +37,8 @@ if __name__ == '__main__':
     parser.add_argument('--product', required=True, choices=['PALETTE-PRO',
                                                              'PALETTE-ENT'])
     parser.add_argument('--send_email', required=False, action='store_true')
-    parser.set_defaults(send_email=False)
     parser.add_argument('--launch', required=False, action='store_true')
-    parser.set_defaults(launch=True)
+    parser.set_defaults(send_email=False, launch=False)
     args = parser.parse_args()
 
     parts = args.fullname.split(' ')
