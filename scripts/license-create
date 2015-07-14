@@ -4,6 +4,7 @@ import sys
 sys.path.append('/opt/palette')
 
 import logging
+from datetime import datetime
 
 from akiri.framework.sqlalchemy import create_engine
 
@@ -31,13 +32,38 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--fullname', required=True)
-    parser.add_argument('--name', required=True)
-    parser.add_argument('--email', required=True)
-    parser.add_argument('--product', required=True, choices=['PALETTE-PRO',
-                                                             'PALETTE-ENT'])
-    parser.add_argument('--send_email', required=False, action='store_true')
-    parser.add_argument('--launch', required=False, action='store_true')
+    parser.add_argument('--fullname',
+        help='Set the fullname for the license. Has to be "Firstname Lastname',
+        required=True)
+    parser.add_argument('--name',
+        help='Sets the unique license name',
+        required=True)
+    parser.add_argument('--email',
+        help='Sets the email address for the license',
+        required=True)
+    parser.add_argument('--stage',
+        help='Sets the stage. If not specified uses STAGE-TRIAL-REQUESTED',
+        required=False,
+        choices=['STAGE-TRIAL-REQUESTED',
+                 'STAGE-TRIAL-REGISTERED',
+                 'STAGE-VERIFIED',
+                 'STAGE-CLOSED-WON'])
+    parser.add_argument('--expires',
+        help='Sets expiration date. Has to be in the format MM/DD/YY',
+        required=False)
+    parser.add_argument('--product',
+        help='Sets the Product',
+        required=True,
+        choices=['PALETTE-PRO', 'PALETTE-ENT'])
+    parser.add_argument('--send_email',
+        help='Send an email to the user. '
+             'If not specified no email will be sent',
+        required=False,
+        action='store_true')
+    parser.add_argument('--launch',
+        help='Launch an instance. If not specified no instance is launched',
+        required=False,
+        action='store_true')
     parser.set_defaults(send_email=False, launch=False)
     args = parser.parse_args()
 
@@ -55,10 +81,20 @@ if __name__ == '__main__':
     else:
         mailid = 'SENDWITHUS-TRIAL-REQUESTED-ENT-ID'
 
+    if args.expires is not None:
+        expiration = datetime.strptime(args.expires, '%x')
+    else:
+        expiration = time_from_today(months=1)
+
+    if args.stage is not None:
+        stage = args.stage
+    else:
+        stage = 'STAGE-TRIAL-REQUESTED'
+
     entry = LicenseManager.new_license(data,
                                        product=args.product,
-                                       stage='STAGE-TRIAL-REQUESTED',
-                                       expiration=time_from_today(months=1),
+                                       stage=stage,
+                                       expiration=expiration,
                                        mailid=mailid,
                                        send_email=args.send_email)
     if entry is None:
