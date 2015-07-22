@@ -25,9 +25,9 @@ class SalesforceAPI(object):
                 password=password,
                 security_token=security_token)
             return salesforce
-        except SalesforceAuthenticationFailed:
-            logger.error('Error Logging into Salesforce %s %s %s',
-                        username, password, security_token)
+        except SalesforceAuthenticationFailed as ex:
+            logger.error('Error Logging into Salesforce %s %s %s: %s',
+                        username, password, security_token, str(ex))
             return None
 
     @classmethod
