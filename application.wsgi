@@ -163,6 +163,14 @@ class SupportApplication(GenericWSGIApplication):
             raise exc.HTTPNotFound()
         return {'port': entry.support.port}
 
+class HomePage(GenericWSGIApplication):
+
+    def service_GET(self, req):
+        # pylint: disable=unused-argument
+        # pylint: disable=line-too-long
+        return "<html>\n" + \
+               "<img src='http://static1.squarespace.com/static/52f6835ce4b09d0c2500656c/t/551201ebe4b0b870a8cbc323/1437579772393/?format=1500w'>" + \
+               "\n</html>\n"
 
 class ExpiredApplication(GenericWSGIApplication):
 
@@ -849,6 +857,8 @@ router.add_route(r'/api/verify\Z', VerifyApplication())
 router.add_route(r'/api/trial\Z', TrialRequestApplication())
 # called when the initial setup page is completed.
 router.add_route(r'/api/trial-start\Z', TrialStartApplication())
+# Home page
+router.add_route(r'/\Z', HomePage())
 
 application = SessionMiddleware(app=router)
 
@@ -864,6 +874,5 @@ if __name__ == '__main__':
 
     application = TransLogger(application)
 
-    router.add_redirect(r'/\Z', 'http://www.palette-software.com')
     runserver(application, use_reloader=True,
               host='0.0.0.0', port=args.port, ssl_pem=args.pem)
