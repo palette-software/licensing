@@ -169,7 +169,7 @@ class HomePage(GenericWSGIApplication):
         # pylint: disable=unused-argument
         # pylint: disable=line-too-long
         return "<html>\n" + \
-               "<img src='http://static1.squarespace.com/static/52f6835ce4b09d0c2500656c/t/551201ebe4b0b870a8cbc323/1437579772393/?format=1500w'>" + \
+               "<img src='http://static1.squarespace.com/static/52f6835ce4b09d0c2500656c/t/551201ebe4b0b870a8cbc323/1437579772393/?format=1500w' width='800'>" + \
                "\n</html>\n"
 
 class ExpiredApplication(GenericWSGIApplication):
