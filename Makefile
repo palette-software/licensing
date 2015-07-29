@@ -26,6 +26,7 @@ SCRIPTS := \
 	support-define-port \
 	license-cleanup \
         license-create \
+	license-sync \
         license-update
 
 all: pylint
@@ -39,6 +40,12 @@ pylint:
 		$(PYLINT) scripts/$$x; \
 	done
 .PHONY: pylint
+
+publish_scripts:
+	scp -i $(PEM) scripts/create-tables $(URL):
+	cd scripts && scp -i $(PEM) $(SCRIPTS) $(URL):/tmp
+	ssh -i $(PEM) $(URL) sudo mv /tmp/license-\* /tmp/support-\* /usr/local/bin/
+.PHONY: publish_scripts
 
 publish:
 	scp -i $(PEM) $(FILES) scripts/create-tables $(URL):/opt/palette/
