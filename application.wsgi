@@ -160,14 +160,6 @@ class SupportApplication(GenericWSGIApplication):
             raise exc.HTTPNotFound()
         return {'port': entry.support.port}
 
-class HomePage(GenericWSGIApplication):
-
-    def service_GET(self, req):
-        # pylint: disable=unused-argument
-        # pylint: disable=line-too-long
-        return "<html>\n" + \
-               "<img src='http://static1.squarespace.com/static/52f6835ce4b09d0c2500656c/t/551201ebe4b0b870a8cbc323/1437579772393/?format=1500w' width='800'>" + \
-               "\n</html>\n"
 
 class ExpiredApplication(GenericWSGIApplication):
 
@@ -192,6 +184,7 @@ REGISTER_FIELDS = {
         'fname':'firstname', 'lname':'lastname',
         'email':'email',
 }
+
 class RegisterApplication(GenericWSGIApplication):
     @required_parameters(*REGISTER_FIELDS.keys())
     def service_POST(self, req):
@@ -252,6 +245,7 @@ class RegisterApplication(GenericWSGIApplication):
         # use 302 here so that the browswer redirects with a GET request.
         url = System.get_by_key('REGISTER-REDIRECT-URL')
         return exc.HTTPFound(location=url)
+
 
 class VerifyApplication(GenericWSGIApplication):
     def service_GET(self, req):
@@ -651,8 +645,7 @@ router.add_route(r'/api/verify\Z', VerifyApplication())
 router.add_route(r'/api/trial\Z', TrialRequestApplication())
 # called when the initial setup page is completed.
 router.add_route(r'/api/trial-start\Z', TrialStartApplication())
-# Home page
-router.add_route(r'/\Z', HomePage())
+router.add_redirect(r'/\Z', 'http://www.palette-software.com')
 
 application = SessionMiddleware(app=router)
 
