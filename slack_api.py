@@ -7,7 +7,10 @@ from utils import str2bool
 logger = logging.getLogger('licensing')
 
 URL = 'https://palette.slack.com/services/hooks/slackbot'
-TOKEN = '6jZnrmPb4whXzzv7ICYcdAzz'
+
+# Slackbot Remote Control
+# This token is tied to the account 'matt@palette-software.com'.
+TOKEN = 'UGbMIqQeuW8FhraxvckabwL1'
 
 class SlackAPI(object):
     @classmethod

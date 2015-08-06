@@ -13,7 +13,6 @@ from sqlalchemy.orm.exc import NoResultFound
 # pylint: disable=unused-import
 from stage import Stage
 from product import Product
-from billing import Billing
 
 class License(Base):
     # pylint: disable=no-init
@@ -82,6 +81,7 @@ class License(Base):
 
     salesforceid = Column(String)
     amount = Column(Numeric) # FIXME: move to billing?
+    plan = Column(String) # Plan name - if NULL use default
 
     # Last connection from the support functionality
     support_contact_time = Column(DateTime)
@@ -98,13 +98,49 @@ class License(Base):
 
     stage = relationship('Stage')
     product = relationship('Product')
-    billing = relationship('Billing', uselist=False, lazy='joined')
+    #billing = relationship('Billing', uselist=False, lazy='joined')
 
     # FIXME: rename
     def istrial(self):
         if not self.stage:
             return True
         return not self.stage.key == 'STAGE-CLOSED-WON'
+
+    # FIXME: generalize
+    def todict(self):
+
+        license_type = self.type
+
+        data = {'license-key': self.key,
+                'license-type': license_type}
+        data['product'] = self.product.key
+        data['product-name'] = self.product.name
+
+        if self.product.key != Product.PRO_KEY:
+            if license_type == 'Core':
+                data['license-desc'] = str(self.n) + ' Cores'
+            elif license_type == 'Named-user':
+                data['license-desc'] = str(self.n) + ' Named Users'
+
+        if self.website:
+            data['website'] = self.website
+        if self.promo_code:
+            data['promo'] = self.promo_code
+
+        return data
+
+    def email_data(self):
+        """ creates a dict that contains the fileds to put passed to emails"""
+        return {'license':self.key,
+                'firstname':self.firstname,
+                'lastname':self.lastname,
+                'email':self.email,
+                'organization':self.organization,
+                'hosting_type':self.hosting_type,
+                'promo_code':self.promo_code,
+                'subdomain':self.subdomain,
+                'access_key':self.access_key,
+                'secret_key':self.secret_key}
 
     @classmethod
     def get_by_name(cls, name):

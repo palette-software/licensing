@@ -8,8 +8,6 @@ from akiri.framework.sqlalchemy import create_engine
 from licensing import License
 from salesforce_api import SalesforceAPI
 
-from utils import to_localtime
-
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
 create_engine(DATABASE, echo=False, pool_size=20, max_overflow=30)
 

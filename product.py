@@ -7,19 +7,25 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from mixin import BaseMixin
 
+PRO_KEY = 'PALETTE-PRO'
+ENT_KEY = 'PALETTE-ENT'
+
 class Product(Base, BaseMixin):
     # pylint: disable=no-init
     # pylint: disable=invalid-name
     __tablename__ = 'product'
 
+    PRO_KEY = PRO_KEY
+    ENT_KEY = ENT_KEY
+
     id = Column(Integer, primary_key=True)
     key = Column(String)
     name = Column(String, nullable=False)
 
-    defaults = [{'key' : 'PALETTE-PRO',
-                 'name': 'Palette Pro'},
-                {'key'  : 'PALETTE-ENT',
-                 'name': 'Palette Enterprise'}]
+    defaults = [{'key' : PRO_KEY,
+                 'name': 'Palette Pro for Tableau Server'},
+                {'key'  : ENT_KEY,
+                 'name': 'Palette Enterprise for Tableau Server'}]
 
     @classmethod
     def get_by_id(cls, rowid):

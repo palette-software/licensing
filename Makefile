@@ -5,7 +5,6 @@ PEM := ~/.ssh/PaletteStandardKeyPair2014-02-16.pem
 URL := ubuntu@licensing.palette-software.com
 
 FILES := application.wsgi \
-	billing.py \
 	licensing.py \
         license_manager.py \
 	mixin.py \
@@ -16,8 +15,10 @@ FILES := application.wsgi \
 	boto_api.py \
 	support.py \
 	stage.py \
+	plan.py \
         product.py \
         server_info.py \
+	subscribe.py \
 	system.py \
 	utils.py
 
@@ -42,16 +43,13 @@ pylint:
 .PHONY: pylint
 
 publish_scripts:
-	scp -i $(PEM) scripts/create-tables $(URL):
+	scp -i $(PEM) scripts/create-tables $(URL):/opt/palette/
 	cd scripts && scp -i $(PEM) $(SCRIPTS) $(URL):/tmp
 	ssh -i $(PEM) $(URL) sudo mv /tmp/license-\* /tmp/support-\* /usr/local/bin/
 .PHONY: publish_scripts
 
-publish:
-	scp -i $(PEM) $(FILES) scripts/create-tables $(URL):/opt/palette/
-	cd scripts && scp -i $(PEM) $(SCRIPTS) $(URL):/tmp
-	scp -i $(PEM) scripts/create-tables $(URL):
-	ssh -i $(PEM) $(URL) sudo mv /tmp/license-\* /tmp/support-\* /usr/local/bin/
+publish: publish_scripts
+	scp -i $(PEM) $(FILES) $(URL):/opt/palette/
 	ssh -i $(PEM) $(URL) sudo service apache2 reload
 .PHONY: publish
 

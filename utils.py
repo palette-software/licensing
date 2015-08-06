@@ -117,4 +117,3 @@ def translate_values(source, entry, fields):
         value = source.get(name)
         if value is not None:
             setattr(entry, dest_attr, value)
-

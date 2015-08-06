@@ -13,6 +13,8 @@ class SalesforceAPI(object):
     """ Class that uses the salesforce python module to create
         Contcts, Accounts and Opportunities
     """
+    # FIXME:
+    # pylint: disable=too-many-public-methods
 
     @classmethod
     def _get_connection(cls):
@@ -29,6 +31,16 @@ class SalesforceAPI(object):
             logger.error('Error Logging into Salesforce %s %s %s: %s',
                         username, password, security_token, str(ex))
             return None
+
+    @classmethod
+    def connect(cls):
+        username = System.get_by_key('SALESFORCE-USERNAME')
+        password = System.get_by_key('SALESFORCE-PASSWORD')
+        security_token = System.get_by_key('SALESFORCE-TOKEN')
+        sf = Salesforce(username=username,
+                        password=password,
+                        security_token=security_token)
+        return sf
 
     @classmethod
     def get_url(cls):
@@ -102,6 +114,55 @@ class SalesforceAPI(object):
         return contactid
 
     @classmethod
+    def get_contact_id(cls, conn, email):
+        """Retrieve a contact id by Email address."""
+        sql = "SELECT Name, id FROM Contact where Email='{0}'"
+        contact = conn.query(sql.format(email))
+        if contact is None or contact['totalSize'] == 0:
+            contactid = None
+        elif contact['totalSize'] != 1:
+            raise ValueError("Duplicate contact for email '" + email +"'")
+        else:
+            contactid = contact['records'][0]['Id']
+        return contactid
+
+    @classmethod
+    def get_contact_by_email(cls, conn, email):
+        """Retrieve a full contact record by Email."""
+        contactid = cls.get_contact_id(conn, email)
+        if not contactid:
+            return None
+        return conn.Contact.get(contactid)
+
+    @classmethod
+    def get_lead(cls, conn, email):
+        """Retrieve a contact by Email address."""
+        sql = "SELECT Name, id FROM Lead where Email='{0}'"
+        lead = conn.query(sql.format(email))
+        if lead is None or lead['totalSize'] == 0:
+            leadid = None
+        if lead['totalSize'] != 1:
+            raise ValueError("Duplicate lead for email '" + email +"'")
+        else:
+            leadid = lead['records'][0]['Id']
+        return leadid
+
+    @classmethod
+    def create_contact(cls, conn, email, accountid,
+                       fname=None, lname=None, phone=None, admin_role=None):
+        #pylint: disable=too-many-arguments
+        data = {'Firstname':fname,
+                'Lastname':lname,
+                'Email':email,
+                'Phone':phone,
+                'AccountId':accountid,
+                'Admin_Role__c':admin_role}
+        contact = conn.Contact.create(data)
+        logger.info('Created Contact Name %s %s (%s) Id %s',
+                    fname, lname, email, contact['id'])
+        return contact
+
+    @classmethod
     def lookup_or_create_contact(cls, data, accountid):
         """ Lookup or create contact
         """
@@ -145,6 +206,22 @@ class SalesforceAPI(object):
         return contactid
 
     @classmethod
+    def upsert_contact(cls, conn, account_id, data):
+        """Create or update a contact."""
+        if 'Email' not in data:
+            raise ValueError("Required field 'Email' not found.")
+        email = data['Email']
+
+        data['AccountId'] = account_id
+
+        contact = cls.get_contact_by_email(conn, email)
+        if contact:
+            conn.Contact.update(contact['Id'], data)
+        else:
+            contact = conn.Contact.create(data)
+        return contact
+
+    @classmethod
     def update_contact(cls, data):
         """ Update Contact
         """
@@ -182,6 +259,28 @@ class SalesforceAPI(object):
         if opp is not None and opp['totalSize'] == 1:
             return opp['records'][0]
         return None
+
+    @classmethod
+    def get_opportunity_id(cls, conn, key):
+        """ Find an opportunity id by license key"""
+        sql = "SELECT Name, id FROM Opportunity " +\
+              "WHERE Palette_License_Key__c='{0}'"
+        opp = conn.query(sql.format(key))
+        if opp is None:
+            oppid = None
+        elif opp['totalSize'] != 1:
+            raise ValueError("Duplicate opportunities for '" + key + "'")
+        else:
+            oppid = opp['records'][0]['Id']
+        return oppid
+
+    @classmethod
+    def get_opportunity_by_key(cls, conn, key):
+        """ Retrieve a full opportunity record by license key"""
+        oppid = cls.get_opportunity_id(conn, key)
+        if oppid is None:
+            return None
+        return conn.Opportunity.get(oppid)
 
     @classmethod
     def get_opportunity_name(cls, data):
