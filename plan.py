@@ -37,6 +37,9 @@ class Plan(object):
                     plan.name = System.get_by_key('PALETTE-ENT-CORE-PLAN')
             plan.quantity = entry.n
 
+        if not plan.name:
+            return None
+
         stripe_plan = stripe.Plan.retrieve(plan.name)
         if not stripe_plan:
             raise ValueError("Invalid plan name : '" + plan.name + "'")

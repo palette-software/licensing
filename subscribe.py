@@ -110,11 +110,15 @@ def build_account(req):
     data is suitable for a Salesforce account update."""
     data = {}
 
+    name = req.params['Billing-fname'] + " " + req.params['Billing-lname']
+    data['Name_on_Card__c'] = name
+
     address = req.params['address']
 
     address2 = req.params['address2']
     if address2:
         address = address + ', ' + address2
+
     data['BillingStreet'] = address
     data['BillingCity'] = req.params['city']
     data['BillingState'] = req.params['state']
@@ -159,6 +163,12 @@ class SubscribeApplication(GenericWSGIApplication):
         data = entry.todict()
 
         plan = Plan.get_from_license(entry)
+        if not plan:
+            # if agent hasn't connected, there is no plan available.
+            logger.error('No plan available!')
+            # FIXME: need an error page.
+            raise exc.HTTPTemporaryRedirect(location=location)
+
         data['amount'] = plan.amount
         data['price'] = plan.price
         data['quantity'] = plan.quantity
@@ -217,7 +227,7 @@ class SubscribeApplication(GenericWSGIApplication):
                                               quantity=plan.quantity,
                                               email=entry.email)
         entry.amount = plan.amount
-        entry.billing.stripeid = customer.id
+        entry.stripeid = customer.id
 
         now = datetime.utcnow()
         entry.license_start_time = now

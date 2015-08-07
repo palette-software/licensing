@@ -266,7 +266,7 @@ class SalesforceAPI(object):
         sql = "SELECT Name, id FROM Opportunity " +\
               "WHERE Palette_License_Key__c='{0}'"
         opp = conn.query(sql.format(key))
-        if opp is None:
+        if opp is None or opp['totalSize'] == 0:
             oppid = None
         elif opp['totalSize'] != 1:
             raise ValueError("Duplicate opportunities for '" + key + "'")

@@ -83,6 +83,9 @@ class License(Base):
     amount = Column(Numeric) # FIXME: move to billing?
     plan = Column(String) # Plan name - if NULL use default
 
+    # Stripe customer record
+    stripeid = Column(String)
+
     # Last connection from the support functionality
     support_contact_time = Column(DateTime)
 
