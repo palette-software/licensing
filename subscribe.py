@@ -1,3 +1,4 @@
+# This module handles the actual purchase of a product.
 import logging
 from datetime import datetime, timedelta
 from webob import exc
@@ -9,14 +10,14 @@ from akiri.framework import GenericWSGIApplication
 from akiri.framework.util import required_parameters
 from akiri.framework.sqlalchemy import get_session # FIXME
 
+from salesforce_api import SalesforceAPI
+from sendwithus_api import SendwithusAPI
+from slack_api import SlackAPI
+
 from licensing import License
 from plan import Plan
 from stage import Stage
 from system import System
-
-from salesforce_api import SalesforceAPI
-from sendwithus_api import SendwithusAPI
-from slack_api import SlackAPI
 
 from utils import to_localtime, dict_to_qs
 
