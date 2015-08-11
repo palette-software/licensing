@@ -19,15 +19,9 @@ from plan import Plan
 from stage import Stage
 from system import System
 
-from utils import to_localtime, dict_to_qs
+from utils import to_localtime, dict_to_qs, redirect_to_sqs
 
 logger = logging.getLogger('licensing')
-
-def error_notify(msg, data=None):
-    if data:
-        msg = msg + "\n" + str(data)
-    logger.error(msg)
-    SlackAPI.notify(msg)
 
 def sqs_phone(req, prefix=None):
     """
@@ -196,7 +190,7 @@ class SubscribeApplication(GenericWSGIApplication):
         location = url + dict_to_qs(data)
         raise exc.HTTPTemporaryRedirect(location=location)
 
-    @required_parameters('stripeToken')
+    @required_parameters('license-key', 'stripeToken')
     def service_POST(self, req):
         # pylint: disable=too-many-locals
 
@@ -204,7 +198,7 @@ class SubscribeApplication(GenericWSGIApplication):
 
         entry = License.get_by_key(key)
         if entry is None:
-            error_notify("Subscribe request key not found '" + key + "'")
+            SlackAPI.error("Subscribe request key not found '" + key + "'")
             # FIXME: re-route to a custom error page saying contact us.
             raise exc.HTTPNotFound()
 
@@ -239,13 +233,23 @@ class SubscribeApplication(GenericWSGIApplication):
         session = get_session()
         session.commit()
 
-        email_data = entry.email_data()
+        url = System.get_by_key('SUBSCRIBE-REDIRECT-URL')
+
+        try:
+            sf = SalesforceAPI.connect()
+        except StandardError:
+            SlackAPI.error('Unable to connect to Salesforce\n'+str(req.params))
+            return redirect_to_sqs(url)
+
+        contact = SalesforceAPI.get_contact_by_email(sf, entry.email)
+
+        email_data = SendwithusAPI.gather_email_data(contact, entry)
 
         # FIXME: send this to the billing email too.
         # subscribe the user to the trial workflow if not already
         SendwithusAPI.subscribe_user('SENDWITHUS-CLOSED-WON-ID',
                                      'hello@palette-software.com',
-                                     req.params['Email'],
+                                     contact['Email'],
                                      email_data)
 
         #SendwithusAPI.send_message('SENDWITHUS-SUBSCRIBE-NOTIFICATION-ID',
@@ -253,20 +257,11 @@ class SubscribeApplication(GenericWSGIApplication):
         #                           'hello@palette-software.com',
         #                            email_data) # FIXME: needs billing info
 
-        # use 302 here so that the browswer redirects with a GET request.
-        url = System.get_by_key('SUBSCRIBE-REDIRECT-URL')
-
-        try:
-            sf = SalesforceAPI.connect()
-        except StandardError:
-            error_notify('Unable to connect to Salesforce', req.params)
-            return exc.HTTPFound(location=url)
-
         try:
             opportunity = SalesforceAPI.get_opportunity_by_key(sf, key)
             if opportunity is None:
-                error_notify("No opportunity for key : " + key)
-                return exc.HTTPFound(location=url)
+                SlackAPI.error("No opportunity for key : " + key)
+                redirect_to_sqs(url)
 
             account_id = opportunity['AccountId']
 
@@ -277,17 +272,15 @@ class SubscribeApplication(GenericWSGIApplication):
             sf.Opportunity.update(opportunity['Id'], build_opportunity(entry))
         except (SalesforceError, StandardError), ex:
             # SalesforceError doesn't inherit from StandardError
-            error_notify('Salesforce ERROR: ' + str(ex), req.params)
-            return exc.HTTPFound(location=url)
+            SlackAPI.error(str(ex) + '\n' + str(req.params))
+            return redirect_to_sqs(url)
 
         sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opportunity['Id'])
-        SlackAPI.notify('*{0}* Opportunity: {1} ({2}) : {3}'
-                        .format(Stage.get_stage_name(entry.stageid),
-                                opportunity['Name'],
-                                entry.email,
-                                sf_url))
+        SlackAPI.info('*{0}* Opportunity: {1} ({2}) : {3}'
+                      .format(Stage.get_stage_name(entry.stageid),
+                              opportunity['Name'],
+                              entry.email,
+                              sf_url))
         # FIXME: temporary
         SlackAPI.notify(str(req.params))
-
-        logger.info('Subscribe request succeeded for {0}'.format(key))
-        return exc.HTTPFound(location=url)
+        return redirect_to_sqs(url)

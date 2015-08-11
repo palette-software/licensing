@@ -22,6 +22,7 @@ FILES := application.wsgi \
 	register.py \
 	subscribe.py \
 	system.py \
+	trial \
 	utils.py
 
 SCRIPTS := \

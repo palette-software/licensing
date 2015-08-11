@@ -7,9 +7,7 @@ import stripe
 stripe.api_key = 'sk_live_VQnPZ5WlUY0hgbYv5KsGUM80'
 
 from datetime import datetime
-from dateutil.relativedelta import relativedelta
 from webob import exc
-import uuid
 import urllib
 import logging
 
@@ -19,16 +17,11 @@ from akiri.framework.middleware.sqlalchemy import SessionMiddleware
 from akiri.framework.sqlalchemy import create_engine, get_session
 from akiri.framework.util import required_parameters
 
-from register import RegisterApplication, VerifyApplication, unique_name
+from register import RegisterApplication, VerifyApplication
 from subscribe import SubscribeApplication
+from trial import TrialRequestApplication, TrialStartApplication
 
 from salesforce_api import SalesforceAPI
-from sendwithus_api import SendwithusAPI
-from slack_api import SlackAPI
-from ansible_api import AnsibleAPI
-from boto_api import BotoAPI
-from utils import get_netloc, hostname_only, domain_only, \
-    to_localtime
 
 # pylint: disable=unused-import
 from stage import Stage
@@ -40,10 +33,6 @@ from server_info import ServerInfo
 
 # currently is set to 'trust' for the loopback interface so use the old pw.
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
-
-def time_from_today(hours=0, days=0, months=0):
-    return datetime.utcnow() + \
-           relativedelta(hours=hours, days=days, months=months)
 
 def kvp(key, value):
     if value is not None:
@@ -57,21 +46,6 @@ def translate_values(source, entry, fields):
         value = source.get(name)
         if value is not None:
             setattr(entry, dest_attr, value)
-
-def populate_email_data(entry):
-    """ creates a dict that contains the fileds to put passed to trial emails
-    """
-    email_data = {'license':entry.key,
-                  'firstname':entry.firstname,
-                  'lastname':entry.lastname,
-                  'email':entry.email,
-                  'organization':entry.organization,
-                  'hosting_type':entry.hosting_type,
-                  'promo_code':entry.promo_code,
-                  'subdomain':entry.subdomain,
-                  'access_key':entry.access_key,
-                  'secret_key':entry.secret_key}
-    return email_data
 
 def populate_buy_email_data(entry):
     """ creates a dict that contains the fields to put passed to buy emails
@@ -174,23 +148,6 @@ class LicenseApplication(GenericWSGIApplication):
             logger.error('Invalid license key: ' + key)
             raise exc.HTTPNotFound()
 
-        #entry = License()
-        #entry.firstname = req.params['fname']
-        #entry.lastname = req.params['lname']
-        #entry.email = req.params['email']
-        #entry.key = str(uuid.uuid4())
-        #entry.stageid = Stage.get_by_key('STAGE-REGISTERED-UNVERIFIED').id
-        #entry.registration_start_time = datetime.utcnow()
-        #entry.expiration_time = time_from_today(hours=24)
-        #entry.organization = get_netloc(domain_only(entry.email)).lower()
-        #entry.website = entry.organization
-        #entry.subdomain = unique_name(hostname_only(entry.organization))
-        #entry.name = entry.subdomain
-        #entry.salesforceid = SalesforceAPI.new_opportunity(entry)
-        #session.add(entry)
-        #session.commit()
-
-
         system_id = req.params['system-id']
         if entry.system_id and entry.system_id != system_id:
             logger.error('System id from request {1} doesnt match DB {2}'\
@@ -225,279 +182,6 @@ class LicenseApplication(GenericWSGIApplication):
                 details[i] = req.params.get(i)
         ServerInfo.upsert(entry.id, details)
         SalesforceAPI.update_opportunity_details(entry, details)
-
-        return {'id': entry.id,
-                'trial': entry.istrial(),
-                'stage': Stage.get_by_id(entry.stageid).name,
-                'expiration-time': str(entry.expiration_time)}
-
-
-TRIAL_FIELDS = {
-    'fname':'firstname', 'lname':'lastname',
-    'email':'email',
-    'radio-yui_3_17_2_1_1426521445942_51014-field':'hosting_type'
-}
-
-class TrialRequestApplication(GenericWSGIApplication):
-
-    TRIAL_FIELDS = TRIAL_FIELDS
-    PALETTE_PRO = 'Palette Pro'
-    PALETTE_ENT = 'Palette Enterprise'
-
-# pylint: disable=too-many-statements
-    @required_parameters(*TRIAL_FIELDS.keys())
-    def service_POST(self, req):
-        """ Handler for Try Palette Form Post
-        """
-        key = req.params['SQF_KEY']
-        # sqf is a hidden field in the trial page
-        # if no key then the no registeration was done and
-        # the trial form was filled-in to start
-        if len(key) == 0:
-            entry = License()
-            translate_values(req.params, entry, self.TRIAL_FIELDS)
-            logger.info('New trial request for %s %s %s',
-                        entry.firstname,
-                        entry.lastname,
-                        entry.email)
-            entry.key = str(uuid.uuid4())
-            entry.expiration_time = time_from_today(
-                days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
-            entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
-            entry.organization = get_netloc(domain_only(entry.email)).lower()
-            entry.website = entry.organization
-            entry.subdomain = unique_name(hostname_only(entry.organization))
-            entry.name = entry.subdomain
-            logger.info('{0} {1} {2}'.format(entry.organization,
-                                                 entry.subdomain,
-                                                 entry.name))
-
-            entry.registration_start_time = datetime.utcnow()
-            if entry.hosting_type == TrialRequestApplication.PALETTE_PRO:
-                entry.productid = Product.get_by_key('PALETTE-PRO').id
-                entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
-                entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
-            else:
-                entry.productid = Product.get_by_key('PALETTE-ENT').id
-
-            session = get_session()
-            session.add(entry)
-            session.commit()
-
-            # create or use an existing opportunity
-            opp_id = SalesforceAPI.new_opportunity(entry)
-        else:
-            # if there was a key it means they registered before
-
-            logger.info('Key is %s', key)
-            entry = License.get_by_key(key)
-            if entry is None:
-                logger.error('Invalid license key: ' + key)
-                raise exc.HTTPNotFound()
-
-            translate_values(req.params, entry, self.TRIAL_FIELDS)
-            logger.info('New registered trial request for %s %s %s',
-                        entry.firstname,
-                        entry.lastname,
-                        entry.email)
-            entry.expiration_time = time_from_today(
-                days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
-            entry.stageid = Stage.get_by_key('STAGE-TRIAL-REQUESTED').id
-            if entry.hosting_type == TrialRequestApplication.PALETTE_PRO:
-                entry.productid = Product.get_by_key('PALETTE-PRO').id
-                entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
-                entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
-            else:
-                entry.productid = Product.get_by_key('PALETTE-ENT').id
-
-            session = get_session()
-            session.commit()
-
-            # update the sf opportunity
-            opp_id = SalesforceAPI.update_opportunity(entry)
-
-        # subscribe the user to the trial list
-        if entry.hosting_type == TrialRequestApplication.PALETTE_PRO:
-            SendwithusAPI.subscribe_user('SENDWITHUS-TRIAL-REQUESTED-PRO-ID',
-                                         'hello@palette-software.com',
-                                         entry.email,
-                                         populate_email_data(entry))
-
-            AnsibleAPI.launch_instance(entry,
-                                       'PALETTECLOUD-LAUNCH-SUCCESS-ID',
-                                       'PALETTECLOUD-LAUNCH-FAIL-ID')
-            url = System.get_by_key('TRIAL-REQUEST-REDIRECT-PRO-URL')
-
-        else:
-            SendwithusAPI.subscribe_user('SENDWITHUS-TRIAL-REQUESTED-ENT-ID',
-                                         'hello@palette-software.com',
-                                         entry.email,
-                                         populate_email_data(entry))
-            SendwithusAPI\
-               .send_message('SENDWITHUS-TRIAL-REQUESTED-ENT-INTERNAL-ID',
-                             'licensing@palette-software.com',
-                             'support@palette-software.com',
-                             populate_email_data(entry))
-            url = System.get_by_key('TRIAL-REQUEST-REDIRECT-ENT-URL')
-
-        sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
-        SlackAPI.notify('*{0}* Opportunity: '
-                '{1} ({2}) - Type: {3} {4} Expiration {5}'.format(
-                Stage.get_stage_name(entry.stageid),
-                SalesforceAPI.get_opportunity_name(entry),
-                entry.email,
-                entry.hosting_type,
-                sf_url,
-                to_localtime(entry.expiration_time).strftime("%x")))
-
-        logger.info('Trial request success for %s %s', entry.email, entry.key)
-
-        # use 302 here so that the browswer redirects with a GET request.
-        return exc.HTTPFound(location=url)
-
-
-class TrialRegisterApplication(GenericWSGIApplication):
-    @required_parameters('system-id', 'license-key',
-                         'license-type', 'license-quantity')
-    def service_POST(self, req):
-        """ Handle a Trial Registration
-        """
-        key = req.params['license-key']
-        entry = License.get_by_key(key)
-        if entry is None:
-            raise exc.HTTPNotFound()
-
-        #if entry.stage is not config.SF_STAGE_TRIAL_REQUESTED:
-        #    raise exc.HTTPTemporaryRedirect(location=config.BAD_STAGE_URL)
-
-        logger.info('Processing Trial Registration for key {0}'.format(key))
-        system_id = req.params['system-id']
-        if entry.system_id and entry.system_id != system_id:
-            logger.error('Invalid trial register request for key {0}.'
-                         'System id from request {1} doesnt match DB {2}'\
-                   .format(key, system_id, entry.system_id))
-        entry.system_id = system_id
-
-        license_type = req.params['license-type']
-        if entry.type and entry.type != license_type:
-            logger.error('Invalid trial register request for key {0}.'
-                         'License type from request {1} doesnt match DB {2}'\
-                   .format(key, license_type, entry.type))
-        entry.type = license_type
-
-        license_quantity = req.params['license-quantity']
-        if entry.n and entry.n != license_quantity:
-            logger.error('Invalid trial register request for key {0}.'
-                       'License quantity from request {1} doesnt match DB {2}'\
-                   .format(key, license_quantity, entry.n))
-        entry.n = license_quantity
-
-        entry.stageid = Stage.get_by_key('STAGE-TRIAL-REGISTERED').id
-        entry.expiration_time = time_from_today(
-             days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
-        entry.registration_start_time = datetime.utcnow()
-        entry.contact_time = datetime.utcnow()
-        session = get_session()
-        session.commit()
-
-        # update the opportunity
-        SalesforceAPI.update_opportunity(entry)
-        # subscribe the user to the trial workflow if not already
-        SendwithusAPI.subscribe_user('SENDWITHUS-TRIAL-REGISTERED-ID',
-                                     'hello@palette-software.com',
-                                     entry.email,
-                                     populate_email_data(entry))
-
-        logger.info('Trial Registration for key {0} success. Expiration {1}'\
-              .format(key, entry.expiration_time))
-
-        return {'trial': entry.istrial(),
-                'stage': Stage.get_by_id(entry.stageid).name,
-                'expiration-time': str(entry.expiration_time)}
-
-
-class TrialStartApplication(GenericWSGIApplication):
-    @required_parameters('system-id', 'license-key')
-    def service_POST(self, req):
-        """ Handle a Trial start
-        """
-        key = req.params['license-key']
-        entry = License.get_by_key(key)
-        if entry is None:
-            logger.error('Invalid trial start key: ' + key)
-            raise exc.HTTPNotFound()
-
-        #if entry.stage is not config.SF_STAGE_TRIAL_REGISTERED:
-        #    raise exc.HTTPTemporaryRedirect(location=config.BAD_STAGE_URL)
-
-        system_id = req.params['system-id']
-        if entry.system_id and entry.system_id != system_id:
-            logger.error('Invalid trial start request for key {0}.'
-                         'System id from request {1} doesnt match DB {2}'\
-                   .format(key, system_id, entry.system_id))
-        entry.system_id = system_id
-
-        session = get_session()
-
-        # FIXME: *only* do this if in the correct stage (otherwise free trials!)
-        if entry.stageid == Stage.get_by_key('STAGE-CLOSED-WON').id:
-            #if already set to closed won just update time and notify
-            if entry.license_start_time is None:
-                entry.license_start_time = datetime.utcnow()
-            entry.contact_time = datetime.utcnow()
-
-            session.commit()
-
-            logger.info('License Start for key {0} success. Expiration {1}'\
-              .format(key, entry.expiration_time))
-
-            # update the opportunity
-            opp_id = SalesforceAPI.update_opportunity(entry)
-
-            sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
-            SlackAPI.notify('*{0}* '
-                    'Key: {1}, Name: {2} ({3}), Org: {4}, Type: {5} {6} '\
-                    'Expiration {7}' \
-                    .format(Stage.get_stage_name(entry.stageid), entry.key,
-                    entry.firstname + ' ' + entry.lastname, entry.email,
-                    entry.organization, entry.hosting_type, sf_url,
-                    to_localtime(entry.expiration_time).strftime("%x")))
-
-        elif entry.stageid != Stage.get_by_key('STAGE-TRIAL-STARTED').id:
-            logger.info('Starting Trial for key {0}'.format(key))
-
-            # if this is the trial hasnt started yet start it
-            entry.stageid = Stage.get_by_key('STAGE-TRIAL-STARTED').id
-            entry.expiration_time = time_from_today(\
-                days=int(System.get_by_key('TRIAL-REG-EXPIRATION-DAYS')))
-            entry.trial_start_time = datetime.utcnow()
-            entry.contact_time = entry.trial_start_time
-            session.commit()
-
-            logger.info('Trial Start for key {0} success. Expiration {1}'\
-              .format(key, entry.expiration_time))
-
-            # update the opportunity
-            opp_id = SalesforceAPI.update_opportunity(entry)
-            # subscribe the user to the trial workflow if not already
-            SendwithusAPI.subscribe_user('SENDWITHUS-TRIAL-STARTED-ID',
-                                         'hello@palette-software.com',
-                                         entry.email,
-                                         populate_email_data(entry))
-
-            sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
-            SlackAPI.notify('*{0}* '
-                    'Key: {1}, Name: {2} ({3}), Org: {4}, Type: {5} {6} '\
-                    'Expiration: {7}' \
-                    .format(Stage.get_stage_name(entry.stageid), entry.key,
-                    entry.firstname + ' ' + entry.lastname, entry.email,
-                    entry.organization, entry.hosting_type, sf_url,
-                    to_localtime(entry.expiration_time).strftime("%x")))
-        else:
-            logger.info('Licensing ping received for key {0}'.format(key))
-            # just update the last contact time
-            entry.contact_time = datetime.utcnow()
-            session.commit()
 
         return {'id': entry.id,
                 'trial': entry.istrial(),

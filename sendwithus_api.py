@@ -47,3 +47,18 @@ class SendwithusAPI(object):
         if response.status_code != 200:
             logger.error('Error sending message %s to user %s: %s',
                          mailid, to_address, response.content)
+
+    @classmethod
+    def gather_email_data(cls, contact, entry):
+        """Generate a dict from a SF contact and a license instance"""
+        email_data = {'license': entry.key,
+                      'firstname': contact['FirstName'],
+                      'lastname': contact['LastName'],
+                      'email': contact['Email'], # entry.email is the base
+                      'organization': entry.organization,
+                      'hosting_type': entry.hosting_type,
+                      'promo_code': entry.promo_code,
+                      'subdomain': entry.subdomain,
+                      'access_key': entry.access_key,
+                      'secret_key': entry.secret_key}
+        return email_data

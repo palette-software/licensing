@@ -59,10 +59,10 @@ class License(Base):
     # Promotion code / coupon
     promo_code = Column(String) # can't be in billing
 
-    # FIXME: move to a customer table
+    # Contact email of the person who created this instance
     email = Column(String, nullable=False) # FIXME: unique
-    firstname = Column(String, nullable=False)
-    lastname = Column(String, nullable=False)
+
+    # FIXME: move to Salesforce
     organization = Column(String)
     timezone = Column(String)
     website = Column(String)
@@ -131,19 +131,6 @@ class License(Base):
             data['promo'] = self.promo_code
 
         return data
-
-    def email_data(self):
-        """ creates a dict that contains the fileds to put passed to emails"""
-        return {'license':self.key,
-                'firstname':self.firstname,
-                'lastname':self.lastname,
-                'email':self.email,
-                'organization':self.organization,
-                'hosting_type':self.hosting_type,
-                'promo_code':self.promo_code,
-                'subdomain':self.subdomain,
-                'access_key':self.access_key,
-                'secret_key':self.secret_key}
 
     @classmethod
     def get_by_name(cls, name):

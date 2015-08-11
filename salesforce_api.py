@@ -2,10 +2,13 @@ import logging
 
 from stage import Stage
 from system import System
-from utils import to_localtime
+from utils import to_localtime, get_netloc, domain_only
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 
+from contact import Email
 from product import Product
+
+from slack_api import SlackAPI
 
 CONTACT_VERIFIED = 'Verified_Email__c'
 CONTACT_EMAIL_BASE = 'Base_Email__c'
@@ -177,19 +180,32 @@ class SalesforceAPI(object):
         return leadid
 
     @classmethod
-    def create_contact(cls, conn, email, accountid,
-                       fname=None, lname=None, phone=None, admin_role=None):
-        #pylint: disable=too-many-arguments
-        data = {'Firstname':fname,
-                'Lastname':lname,
-                'Email':email,
-                'Phone':phone,
-                'AccountId':accountid,
-                'Admin_Role__c':admin_role}
+    def create_contact(cls, conn, fname, lname, email):
+        """Create a new contact (that definitely doesn't exist) and optionally
+        create the associated account.  Returns the contact_id."""
+        if not isinstance(email, Email):
+            email = Email(email)
+
+        # accounts are named by website
+        website = get_netloc(domain_only(email.base)).lower()
+
+        account_id = SalesforceAPI.get_account_id(conn, website)
+        if account_id is None:
+            account = conn.Account.create({'Name': website,
+                                         'Website': website})
+            account_id = account['id']
+            SlackAPI.info("*New Account*: '" + website + "'")
+        # FIXME: contact role.
+
+        data = {'Firstname': fname,
+                'Lastname': lname,
+                'Email': email.full,
+                CONTACT_EMAIL_BASE: email.base}
         contact = conn.Contact.create(data)
-        logger.info('Created Contact Name %s %s (%s) Id %s',
-                    fname, lname, email, contact['id'])
-        return contact
+        contact_name = '{0} {1} <{2}>'.format(fname, lname, email.base)
+        SlackAPI.info("*New Contact* (unverified): '" + contact_name + "'")
+        return contact['id'] # NOTE lowercase 'id' on create() response
+
 
     @classmethod
     def lookup_or_create_contact(cls, data, accountid):
@@ -330,6 +346,14 @@ class SalesforceAPI(object):
         return name
 
     @classmethod
+    def license_to_oppname(cls, full_name, entry):
+        """ Returns the standard name for an opportunity
+        """
+        name = entry.organization + ' ' + full_name + ' ' +\
+               to_localtime(entry.registration_start_time).strftime('%x %X')
+        return name
+
+    @classmethod
     def new_opportunity(cls, data):
         """ Create a new Salesforce Opportunity
         """
@@ -361,6 +385,33 @@ class SalesforceAPI(object):
         logger.info('Creating new opportunity with Contact ' + \
                     'Name %s %s Account Id %s Contact Id %s',
                     data.firstname, data.lastname, accountid, contactid)
+        return opp['id']
+
+    @classmethod
+    def create_opportunity(cls, conn, name, account_id, entry):
+        """ Create a new Salesforce Opportunity from a licensing entry.
+        Returns the opportunity id.
+        """
+        registration_start_time = entry.registration_start_time.isoformat()
+
+        row = {'Name':name, 'AccountId':account_id,
+               'StageName': Stage.get_by_id(entry.stageid).name,
+               'CloseDate': entry.expiration_time.isoformat(),
+               'Expiration_Date__c': entry.expiration_time.isoformat(),
+               'Palette_License_Key__c': entry.key,
+               'Palette_Server_Time_Zone__c': entry.timezone,
+               'Hosting_Type__c':entry.hosting_type,
+               'AWS_Region__c':entry.aws_zone,
+               'Palette_Cloud_subdomain__c':entry.subdomain,
+               'Promo_Code__c':entry.promo_code,
+               'Trial_Request_Date_Time__c': registration_start_time,
+               'Access_Key__c':entry.access_key,
+               'Secret_Access_Key__c':entry.secret_key,
+               'Amount':entry.amount} # FIXME: is this valid?
+        if entry.productid is not None:
+            row['Palette_Plan__c'] = Product.get_by_id(entry.productid).name
+        opp = conn.Opportunity.create(row)
+        SlackAPI.info("*New Opportunity* " + name)
         return opp['id']
 
     @classmethod
@@ -406,6 +457,8 @@ class SalesforceAPI(object):
 
             return oppid
         return None
+
+
 
     @classmethod
     def update_opportunity_details(cls, data, details):

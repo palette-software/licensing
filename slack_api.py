@@ -13,6 +13,7 @@ URL = 'https://palette.slack.com/services/hooks/slackbot'
 TOKEN = 'UGbMIqQeuW8FhraxvckabwL1'
 
 class SlackAPI(object):
+
     @classmethod
     def notify(cls, message):
         if str2bool(System.get_by_key('SEND-SLACK')):
@@ -21,3 +22,19 @@ class SlackAPI(object):
             requests.post(url, data=message)
         else:
             logger.info('Not sending slack message')
+
+    @classmethod
+    def info(cls, message):
+        logger.info(message)
+        cls.notify(message)
+
+    @classmethod
+    def warning(cls, message):
+        logger.warning(message)
+        cls.notify("*[WARNING]* " + message)
+
+    @classmethod
+    def error(cls, message):
+        logger.error(message)
+        cls.notify("*[ERROR]* " + message)
+

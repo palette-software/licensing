@@ -8,9 +8,11 @@ from datetime import datetime
 
 from akiri.framework.sqlalchemy import create_engine
 
+from contact import Email
 from utils import time_from_today
 from license_manager import LicenseManager
 from ansible_api import AnsibleAPI
+from salesforce_api import SalesforceAPI
 
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
 
@@ -70,10 +72,11 @@ if __name__ == '__main__':
     parts = args.fullname.split(' ')
     fn = parts[0]
     ln = parts[1]
+    email = Email(args.email)
 
     data = {'firstname':fn,
             'lastname':ln,
-            'email':args.email,
+            'email':email.base,
             'name':args.name}
 
     if args.product == 'PALETTE-PRO':
@@ -91,7 +94,14 @@ if __name__ == '__main__':
     else:
         stage = 'STAGE-TRIAL-REQUESTED'
 
-    entry = LicenseManager.new_license(data,
+    # FIXME: create if needed.
+    sf = SalesforceAPI.connect()
+    contact = sf.get_contact_by_email(email.base)
+    if contact is None:
+        # FIXME
+        raise Exception("contact doesn't exist yet")
+
+    entry = LicenseManager.new_license(data, contact=contact,
                                        product=args.product,
                                        stage=stage,
                                        expiration=expiration,
@@ -101,7 +111,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     if args.product == 'PALETTE-PRO' and args.launch:
-        AnsibleAPI.launch_instance(entry,
+        AnsibleAPI.launch_instance(entry, contact,
                                   'PALETTECLOUD-LAUNCH-SUCCESS-ID',
                                   'PALETTECLOUD-LAUNCH-FAIL-ID')
 

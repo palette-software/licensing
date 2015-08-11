@@ -18,7 +18,7 @@ logger = logging.getLogger('licensing')
 ANSIBLE_PATH = '/opt/ansible'
 REGION = 'us-east-1'
 
-def run_process(entry, success_mailid, fail_mailid):
+def run_process(entry, contact, success_mailid, fail_mailid):
     logger.info('Launching an instance %s', entry.subdomain)
 
     zone = System.get_by_key('PALETTECLOUD-DNS-ZONE')
@@ -47,13 +47,13 @@ def run_process(entry, success_mailid, fail_mailid):
         temp = tempfile.NamedTemporaryFile()
         temp.write(out)
         temp.seek(0)
+
+        email_data = SendwithusAPI.gather_email_data(contact, entry)
+
         SendwithusAPI.send_message(fail_mailid,
-                    'licensing@palette-software.com',
-                    'diagnostics@palette-software.com', data={
-                        'subdomain':entry.subdomain,
-                        'firstname':entry.firstname,
-                        'lastname':entry.lastname,
-                    }, files=[temp])
+                                   'licensing@palette-software.com',
+                                   'diagnostics@palette-software.com',
+                                   data=email_data, files=[temp])
         temp.close()
 
         SlackAPI.notify('*Failed to launch Palette Pro Instance.* '
@@ -80,28 +80,18 @@ def run_process(entry, success_mailid, fail_mailid):
         session.commit()
 
         # send an email
-        email_data = {'license':entry.key,
-                  'firstname':entry.firstname,
-                  'lastname':entry.lastname,
-                  'organization':entry.organization,
-                  'hosting_type':entry.hosting_type,
-                  'promo_code':entry.promo_code,
-                  'subdomain':entry.subdomain,
-                  'access_key':entry.access_key,
-                  'secret_key':entry.secret_key}
+        email_data = SendwithusAPI.gather_email_data(contact, entry)
 
         SendwithusAPI.send_message(success_mailid,
                     'hello@palette-software.com',
-                    entry.email,
-                    data=email_data)
+                    contact['Email'], data=email_data)
 
-        SlackAPI.notify('*Succesfully launched Palette Pro Instance.* '
-                'Opportunity: {0}'.format(
-                SalesforceAPI.get_opportunity_name(entry)))
+        SlackAPI.notify('*Succesfully launched Palette Pro Instance.*: ' + \
+                        entry.name)
 
 class AnsibleAPI(object):
     @classmethod
-    def launch_instance(cls, entry, success_mailid, fail_mailid):
+    def launch_instance(cls, entry, contact, success_mailid, fail_mailid):
         """ Creates a thread in which it launches a script to create
             a palette cloud instance by using Ansible
         """
@@ -110,7 +100,7 @@ class AnsibleAPI(object):
 
         if str2bool(System.get_by_key('CREATE-INSTANCE')):
             thread = threading.Thread(target=run_process,
-                args=(entry, success_mailid, fail_mailid,))
+                args=(entry, contact, success_mailid, fail_mailid,))
             thread.start()
         else:
             logger.info('Not creating an instance')

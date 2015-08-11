@@ -5,6 +5,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import sys
 import urllib
+from webob import exc
 
 # begin deprecated
 class State(object):
@@ -119,3 +120,8 @@ def translate_values(source, entry, fields):
         value = source.get(name)
         if value is not None:
             setattr(entry, dest_attr, value)
+
+def redirect_to_sqs(url):
+    """Redirect a requestion to Squarespace."""
+    # use 302 here so that the browser redirects with a GET request.
+    return exc.HTTPFound(location=url)
