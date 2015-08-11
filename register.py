@@ -1,23 +1,21 @@
 # The module handles the registration and verification of new users.
 import logging
-import uuid
-from datetime import datetime
+import urllib
 from webob import exc
 
 from akiri.framework import GenericWSGIApplication
-from akiri.framework.sqlalchemy import get_session # FIXME
 from akiri.framework.util import required_parameters
 
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
 
+from contact import Email
+
 from licensing import License
-from stage import Stage
 from system import System
 
-from utils import get_netloc, hostname_only, domain_only, to_localtime, \
-    dict_to_qs, time_from_today
+from utils import get_netloc, domain_only, dict_to_qs
 
 logger = logging.getLogger('licensing')
 
@@ -42,6 +40,19 @@ def unique_name(name):
 
     return to_try
 
+# FIXME
+def notify_info(msg):
+    logger.info(msg)
+    SlackAPI.notify(msg)
+
+def notify_warning(msg):
+    logger.error(msg)
+    SlackAPI.notify('*WARNING* ' + msg)
+
+def notify_error(msg):
+    logger.error(msg)
+    SlackAPI.notify('*ERROR* ' + msg)
+
 class RegisterApplication(GenericWSGIApplication):
     """Create a new but unverified user in the database."""
 
@@ -49,60 +60,41 @@ class RegisterApplication(GenericWSGIApplication):
     def service_POST(self, req):
         """ Handle a Registration of a new potential trial user
         """
-        session = get_session()
-        entry = License.get_by_email(req.params['email'])
-        if entry is not None:
-            logger.info('Re-register request for %s %s %s',
-                        entry.firstname, entry.lastname, entry.email)
+        sf = SalesforceAPI.connect()
 
-            entry.registration_start_time = datetime.utcnow()
-            entry.expiration_time = time_from_today(hours=24)
-            session.commit()
-        else:
-            entry = License()
-            entry.firstname = req.params['fname']
-            entry.lastname = req.params['lname']
-            entry.email = req.params['email']
+        fname = req.params['fname']
+        lname = req.params['lname']
+        email = Email(req.params['email'])
+        website = get_netloc(domain_only(email.base)).lower()
 
-            logger.info('New register request for %s %s %s',
-                        entry.firstname, entry.lastname, entry.email)
+        # accounts are named by website
+        account_id = SalesforceAPI.get_account_id(sf, website)
+        if account_id is None:
+            account = sf.Account.create({'Name': website,
+                                         'Website': website})
+            account_id = account['id']
+            notify_info("Created new account '" + website + "'")
 
-            entry.key = str(uuid.uuid4())
-            entry.stageid = Stage.get_by_key('STAGE-REGISTERED-UNVERIFIED').id
-            entry.registration_start_time = datetime.utcnow()
-            entry.expiration_time = time_from_today(hours=24)
-            entry.organization = get_netloc(domain_only(entry.email)).lower()
-            entry.website = entry.organization
-            entry.subdomain = unique_name(hostname_only(entry.organization))
-            entry.name = entry.subdomain
-            entry.salesforceid = SalesforceAPI.new_opportunity(entry)
-            session.add(entry)
-            session.commit()
+        contact_id = SalesforceAPI.get_contact_id(sf, email.base)
+        if contact_id is None:
+            data = {'AccountId': account_id,
+                    'Firstname': fname, 'Lastname': lname,
+                    'Email': email.full, 'Base_Email__c': email.base}
+            sf.Contact.create(data)
 
-            # notify slack
-            sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(),
-                                      entry.salesforceid)
-            SlackAPI.notify('*{0}* Opportunity: '
-                    '{1} ({2}) {3} Expiration {4}'.format(
-                    Stage.get_stage_name(entry.stageid),
-                    SalesforceAPI.get_opportunity_name(entry),
-                    entry.email,
-                    sf_url,
-                    to_localtime(entry.expiration_time).strftime("%x")))
+            contact_name = '{0} {1} <{2}>'.format(fname, lname, email.base)
+            notify_info("*New Contact* (unverified): '" + contact_name + "'")
 
         # send the user an email to allow them to verify their email address
         redirect_url = System.get_by_key('REGISTER-VERIFY-URL')
-        url = '{0}?key={1}'.format(redirect_url, entry.key)
+        url = '{0}?value={1}'.format(redirect_url, urllib.quote(email.base))
         SendwithusAPI.send_message('SENDWITHUS-REGISTERED-UNVERIFIED-ID',
                                    'hello@palette-software.com',
-                                   entry.email,
-                                   {'firstname':entry.firstname,
-                                    'lastname':entry.lastname,
-                                    'key':entry.key,
+                                   email.full,
+                                   {'firstname':fname,
+                                    'lastname':lname,
                                     'url':url
                                    })
-
-        logger.info('Register unvalidated success for %s', entry.email)
 
         # use 302 here so that the browswer redirects with a GET request.
         url = System.get_by_key('REGISTER-REDIRECT-URL')
@@ -118,34 +110,33 @@ class VerifyApplication(GenericWSGIApplication):
     def service_GET(self, req):
         """Handle a Registration Validation of a new potential trial user
         """
-        entry = License.get_by_key(req.params['key'])
-        if entry is None:
+        if 'value' not in req.params:
+            raise exc.HTTPBadRequest()
+
+        # 'value' is the (encoded) contact base email
+        value = req.params['value']
+        email = urllib.unquote(value)
+
+        sf = SalesforceAPI.connect()
+        contact = SalesforceAPI.get_contact_by_email(sf, email)
+
+        if contact is None:
+            notify_error('Unverified email not found: ' + value)
             raise exc.HTTPNotFound()
 
-        session = get_session()
-        entry.stageid = Stage.get_by_key('STAGE-VERIFIED').id
-        entry.expiration_time = time_from_today(months=1)
-        session.commit()
+        verified = contact[SalesforceAPI.CONTACT_VERFIED]
+        if verified:
+            notify_warning('Contact already verfied: ' + email)
+        else:
+            data = {SalesforceAPI.CONTACT_VERFIED: True}
+            sf.Contact.update(contact['Id'], data)
+            notify_info('*Contact Verified* ' + email)
 
-        # update existing opportunity
-        opp_id = SalesforceAPI.update_opportunity(entry)
-
-        # notify slack
-        sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
-        SlackAPI.notify('*{0}* Opportunity: '
-                '{1} ({2}) {3} Expiration {4}'.format(
-                 Stage.get_stage_name(entry.stageid),
-                SalesforceAPI.get_opportunity_name(entry),
-                entry.email,
-                sf_url,
-                to_localtime(entry.expiration_time).strftime("%x")))
-
-        logger.info('Register verified success for %s', entry.email)
-
-        data = {'fname-yui_3_10_1_1_1389902554996_14617':entry.firstname,
-                'lname-yui_3_10_1_1_1389902554996_14617':entry.lastname,
-                'email-yui_3_10_1_1_1389902554996_14932-field':entry.email,
-                'hidden-yui_3_17_2_1_1429117178321_54646':entry.key}
+        base_email = contact[SalesforceAPI.CONTACT_EMAIL_BASE]
+        data = {'fname': contact['FirstName'],
+                'lname': contact['LastName'],
+                'email': email,
+                'key': base_email}
 
         url = System.get_by_key('VERIFY-REDIRECT-URL')
         location = url + dict_to_qs(data)

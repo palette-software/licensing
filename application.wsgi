@@ -31,7 +31,6 @@ from utils import get_netloc, hostname_only, domain_only, \
     to_localtime
 
 # pylint: disable=unused-import
-from billing import Billing
 from stage import Stage
 from licensing import License
 from support import Support
@@ -174,6 +173,23 @@ class LicenseApplication(GenericWSGIApplication):
         if entry is None:
             logger.error('Invalid license key: ' + key)
             raise exc.HTTPNotFound()
+
+        #entry = License()
+        #entry.firstname = req.params['fname']
+        #entry.lastname = req.params['lname']
+        #entry.email = req.params['email']
+        #entry.key = str(uuid.uuid4())
+        #entry.stageid = Stage.get_by_key('STAGE-REGISTERED-UNVERIFIED').id
+        #entry.registration_start_time = datetime.utcnow()
+        #entry.expiration_time = time_from_today(hours=24)
+        #entry.organization = get_netloc(domain_only(entry.email)).lower()
+        #entry.website = entry.organization
+        #entry.subdomain = unique_name(hostname_only(entry.organization))
+        #entry.name = entry.subdomain
+        #entry.salesforceid = SalesforceAPI.new_opportunity(entry)
+        #session.add(entry)
+        #session.commit()
+
 
         system_id = req.params['system-id']
         if entry.system_id and entry.system_id != system_id:

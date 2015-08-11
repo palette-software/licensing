@@ -7,6 +7,9 @@ from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 
 from product import Product
 
+CONTACT_VERIFIED = 'Verified_Email__c'
+CONTACT_EMAIL_BASE = 'Base_Email__c'
+
 logger = logging.getLogger('licensing')
 
 class SalesforceAPI(object):
@@ -15,6 +18,9 @@ class SalesforceAPI(object):
     """
     # FIXME:
     # pylint: disable=too-many-public-methods
+
+    CONTACT_VERFIED = CONTACT_VERIFIED
+    CONTACT_EMAIL_BASE = CONTACT_EMAIL_BASE
 
     @classmethod
     def _get_connection(cls):
@@ -45,6 +51,29 @@ class SalesforceAPI(object):
     @classmethod
     def get_url(cls):
         return System.get_by_key('SALESFORCE-URL')
+
+    @classmethod
+    def get_account_id(cls, conn, website):
+        """ Lookup an account and return the id
+        """
+        conn = cls._get_connection()
+        sql = "SELECT Name, id, Website FROM Account where Website='{0}'"
+        account = conn.query(sql.format(website))
+        if account is None or account['totalSize'] == 0:
+            account_id = None
+        elif account['totalSize'] != 1:
+            raise ValueError("Duplicate account for website '" + website +"'")
+        else:
+            account_id = account['records'][0]['Id']
+        return account_id
+
+    @classmethod
+    def get_account_by_website(cls, conn, website):
+        """ Retrieve a full account record from the website"""
+        account_id = cls.get_account_id(conn, website)
+        if account_id is None:
+            return None
+        return conn.Account.get(account_id)
 
     @classmethod
     def lookup_account(cls, data):

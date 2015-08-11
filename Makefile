@@ -13,6 +13,7 @@ FILES := application.wsgi \
 	slack_api.py \
 	ansible_api.py \
 	boto_api.py \
+	contact.py \
 	support.py \
 	stage.py \
 	plan.py \

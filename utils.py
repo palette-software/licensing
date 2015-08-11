@@ -6,10 +6,21 @@ from dateutil.relativedelta import relativedelta
 import sys
 import urllib
 
+# begin deprecated
 class State(object):
     def __init__(self):
         self.verbose = False
 STATE = State()
+
+def verbose(msg, *args):
+    if STATE.verbose:
+        if args:
+            msg = msg % args
+        print msg
+
+def set_verbosity(value):
+    STATE.verbose = value
+# end deprecated
 
 def fatal(msg, *args, **kwargs):
     msg = '[ERROR] ' + msg
@@ -21,15 +32,6 @@ def fatal(msg, *args, **kwargs):
     else:
         return_code = 1
     sys.exit(return_code)
-
-def verbose(msg, *args):
-    if STATE.verbose:
-        if args:
-            msg = msg % args
-        print msg
-
-def set_verbosity(value):
-    STATE.verbose = value
 
 def str2bool(value):
     if value is None:
