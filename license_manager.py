@@ -200,12 +200,6 @@ class LicenseManager(object):
         if 'subdomain' in params:
             entry.subdomain = params['subdomain']
 
-        if 'lastname' in params:
-            entry.lastname = params['lastname']
-
-        if 'firstname' in params:
-            entry.firstname = params['firstname']
-
         if 'email' in params:
             entry.email = params['email']
 
