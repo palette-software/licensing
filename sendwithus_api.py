@@ -38,12 +38,11 @@ class SendwithusAPI(object):
 
         apikey = System.get_by_key('SENDWITHUS-APIKEY')
         api = sendwithus.api(api_key=apikey)
-        response = api.send(
-            email_id=mailid,
-            email_data=data,
-            recipient={'address':to_address},
-            sender={'address':from_address},
-            files=files)
+        response = api.send(email_id=mailid,
+                            email_data=data,
+                            recipient={'address':to_address},
+                            sender={'address':from_address},
+                            files=files)
         if response.status_code != 200:
             logger.error('Error sending message %s to user %s: %s',
                          mailid, to_address, response.content)

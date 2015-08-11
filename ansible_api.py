@@ -48,12 +48,11 @@ def run_process(entry, contact, success_mailid, fail_mailid):
         temp.write(out)
         temp.seek(0)
 
-        email_data = SendwithusAPI.gather_email_data(contact, entry)
-
-        SendwithusAPI.send_message(fail_mailid,
-                                   'licensing@palette-software.com',
-                                   'diagnostics@palette-software.com',
-                                   data=email_data, files=[temp])
+        #email_data = SendwithusAPI.gather_email_data(contact, entry)
+        #SendwithusAPI.send_message(fail_mailid,
+        #                           'licensing@palette-software.com',
+        #                           'diagnostics@palette-software.com',
+        #                           data=email_data, files=[temp])
         temp.close()
 
         SlackAPI.notify('*Failed to launch Palette Pro Instance.* '
