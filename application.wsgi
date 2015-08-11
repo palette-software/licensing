@@ -11,12 +11,12 @@ from webob import exc
 import urllib
 import logging
 
-from akiri.framework import GenericWSGIApplication
 from akiri.framework.route import Router
 from akiri.framework.middleware.sqlalchemy import SessionMiddleware
 from akiri.framework.sqlalchemy import create_engine, get_session
 from akiri.framework.util import required_parameters
 
+from application import BaseApp
 from register import RegisterApplication, VerifyApplication
 from subscribe import SubscribeApplication
 from trial import TrialRequestApplication, TrialStartApplication
@@ -98,7 +98,7 @@ def get_plan_quantity_amount(entry):
                      * quantity
     return plan, quantity, amount
 
-class SupportApplication(GenericWSGIApplication):
+class SupportApplication(BaseApp):
 
     def service_GET(self, req):
         if 'key' not in req.params:
@@ -115,7 +115,7 @@ class SupportApplication(GenericWSGIApplication):
         return {'port': entry.support.port}
 
 
-class ExpiredApplication(GenericWSGIApplication):
+class ExpiredApplication(BaseApp):
 
     def __init__(self, base_url):
         super(ExpiredApplication, self).__init__()
@@ -127,7 +127,7 @@ class ExpiredApplication(GenericWSGIApplication):
         raise exc.HTTPTemporaryRedirect(location=self.base_url)
 
 
-class HelloApplication(GenericWSGIApplication):
+class HelloApplication(BaseApp):
 
     def service_GET(self, req):
         # pylint: disable=unused-argument
@@ -135,7 +135,7 @@ class HelloApplication(GenericWSGIApplication):
         return str(datetime.now())
 
 
-class LicenseApplication(GenericWSGIApplication):
+class LicenseApplication(BaseApp):
 
     @required_parameters('system-id', 'license-key',
                          'license-type', 'license-quantity')

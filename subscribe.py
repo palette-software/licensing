@@ -6,7 +6,6 @@ from webob import exc
 import stripe
 from simple_salesforce import SalesforceError
 
-from akiri.framework import GenericWSGIApplication
 from akiri.framework.util import required_parameters
 from akiri.framework.sqlalchemy import get_session # FIXME
 
@@ -14,6 +13,7 @@ from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
 
+from application import BaseApp
 from licensing import License
 from plan import Plan
 from stage import Stage
@@ -123,7 +123,7 @@ def build_account(req):
     data['Billing_Phone__c'] = sqs_phone(req, 'Billing-Phone')
     return data
 
-class SubscribeApplication(GenericWSGIApplication):
+class SubscribeApplication(BaseApp):
     """
     This is the handler thats called when a user hits the 'Subscribe'
     button in the main application.

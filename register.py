@@ -3,13 +3,13 @@ import logging
 import urllib
 from webob import exc
 
-from akiri.framework import GenericWSGIApplication
 from akiri.framework.util import required_parameters
 
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
 
+from application import BaseApp
 from contact import Email
 from system import System
 
@@ -37,7 +37,7 @@ def redirect_verify(fname, lname, email):
     return exc.HTTPFound(location=url)
 
 
-class RegisterApplication(GenericWSGIApplication):
+class RegisterApplication(BaseApp):
     """Create a new but unverified user in the database."""
 
     @required_parameters('fname', 'lname', 'email')
@@ -57,7 +57,7 @@ class RegisterApplication(GenericWSGIApplication):
         return redirect_verify(fname, lname, email)
 
 
-class VerifyApplication(GenericWSGIApplication):
+class VerifyApplication(BaseApp):
     """
     This application is called when the user verifies their email address.
     The verification is done by the user clicking on a link in an email

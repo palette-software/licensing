@@ -3,10 +3,10 @@ import uuid
 from datetime import datetime
 from webob import exc
 
-from akiri.framework import GenericWSGIApplication
 from akiri.framework.sqlalchemy import get_session
 from akiri.framework.util import required_parameters
 
+from application import BaseApp
 from contact import Email
 from licensing import License
 from product import Product
@@ -50,7 +50,7 @@ def unique_name(name):
     return to_try
 
 
-class TrialRequestApplication(GenericWSGIApplication):
+class TrialRequestApplication(BaseApp):
     """
     This application is called by Squarespace when a user
     fills out the start-trial form after verifying their email.
@@ -170,7 +170,7 @@ class TrialRequestApplication(GenericWSGIApplication):
         return redirect_to_sqs(url)
 
 
-class TrialStartApplication(GenericWSGIApplication):
+class TrialStartApplication(BaseApp):
     """
     This application is called when the user presses 'Save Settings' on the
     initial setup page.

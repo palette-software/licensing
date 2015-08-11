@@ -5,6 +5,7 @@ PEM := ~/.ssh/PaletteStandardKeyPair2014-02-16.pem
 URL := ubuntu@licensing.palette-software.com
 
 FILES := application.wsgi \
+	application.py \
 	licensing.py \
         license_manager.py \
 	mixin.py \
