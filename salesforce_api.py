@@ -192,12 +192,13 @@ class SalesforceAPI(object):
         account_id = SalesforceAPI.get_account_id(conn, website)
         if account_id is None:
             account = conn.Account.create({'Name': website,
-                                         'Website': website})
+                                           'Website': website})
             account_id = account['id']
             SlackAPI.info("*New Account*: '" + website + "'")
         # FIXME: contact role.
 
-        data = {'Firstname': fname,
+        data = {'AccountId': account_id,
+                'Firstname': fname,
                 'Lastname': lname,
                 'Email': email.full,
                 CONTACT_EMAIL_BASE: email.base}
