@@ -74,11 +74,6 @@ if __name__ == '__main__':
     ln = parts[1]
     email = Email(args.email)
 
-    data = {'firstname':fn,
-            'lastname':ln,
-            'email':email.base,
-            'name':args.name}
-
     if args.product == 'PALETTE-PRO':
         mailid = 'SENDWITHUS-TRIAL-REQUESTED-PRO-ID'
     else:
@@ -101,7 +96,8 @@ if __name__ == '__main__':
         # FIXME
         raise Exception("contact doesn't exist yet")
 
-    entry = LicenseManager.new_license(data, contact=contact,
+    # FIXME: remove new_license
+    entry = LicenseManager.new_license(args.name, contact=contact,
                                        product=args.product,
                                        stage=stage,
                                        expiration=expiration,

@@ -16,7 +16,7 @@ from stage import Stage
 from licensing import License
 from system import System
 from product import Product
-from utils import get_netloc, domain_only, translate_values
+from utils import get_netloc, domain_only
 from salesforce_api import SalesforceAPI
 from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
@@ -92,16 +92,9 @@ class LicenseManager(object):
             cls._check_expired() # FIXME: broken due to populate_email_data
             time.sleep(sleep_interval)
 
-    REGISTER_FIELDS = {
-        'firstname':'firstname',
-        'lastname':'lastname',
-        'email':'email',
-        'name':'name'
-    }
-
     # FIXME: merge with trial? and fix signature
     @classmethod
-    def new_license(cls, params, contact, product, stage,
+    def new_license(cls, name, contact, product, stage,
                          expiration, mailid, send_email=True):
         """ Handle licensing for a new user
         """
@@ -109,20 +102,21 @@ class LicenseManager(object):
         # FIXME
         session = get_session()
 
-        firstname = params['firstname']
-        lastname = params['lastname']
-        email = Email(params['email'])
+        firstname = contact['FirstName']
+        lastname = contact['LastName']
+        email = Email(contact['Email'])
 
-        entry = License.get_by_name(params['name'])
+        entry = License.get_by_name(name)
         if entry is not None:
             logger.info('License already exists for %s %s %s %s',
-                        entry.name, firstname, lastname, email)
+                        entry.name, firstname, lastname, str(email))
             return
         else:
             entry = License()
-            translate_values(params, entry, cls.REGISTER_FIELDS)
+            entry.email = email.base
+            entry.name = name,
             logger.info('Generating new license for %s  %s %s %s',
-                        entry.name, firstname, lastname, email)
+                        entry.name, firstname, lastname, str(email))
 
             entry.key = str(uuid.uuid4())
             entry.stageid = Stage.get_by_key(stage).id
@@ -130,8 +124,7 @@ class LicenseManager(object):
             entry.expiration_time = expiration
             entry.organization = get_netloc(domain_only(entry.email)).lower()
             entry.website = entry.organization
-            entry.subdomain = params['name']
-            entry.name = entry.subdomain
+            entry.subdomain = name
             entry.productid = Product.get_by_key(product).id
             if entry.productid == Product.get_by_key('PALETTE-PRO').id:
                 entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)

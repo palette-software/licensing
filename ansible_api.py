@@ -19,6 +19,7 @@ ANSIBLE_PATH = '/opt/ansible'
 REGION = 'us-east-1'
 
 def run_process(entry, contact, success_mailid, fail_mailid):
+    # pylint: disable=unused-argument
     logger.info('Launching an instance %s', entry.subdomain)
 
     zone = System.get_by_key('PALETTECLOUD-DNS-ZONE')
