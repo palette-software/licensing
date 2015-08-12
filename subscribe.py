@@ -182,7 +182,7 @@ class SubscribeApplication(BaseApp):
                 'Key: {0}, Opportunity: {1}, Name: {2} ({3}), '
                 'Org: {4}, Type: {5} {6} Expiration {7} Expired: {8}' \
                 .format(entry.key, opp_name,
-                        entry.firstname + ' ' + entry.lastname, entry.email,
+                        entry.name, entry.email,
                         entry.organization, entry.hosting_type, sf_url,
                         to_localtime(entry.expiration_time).strftime("%x"),
                         is_expired))
