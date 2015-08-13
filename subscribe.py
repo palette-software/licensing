@@ -60,7 +60,6 @@ def build_contact(req):
     data['LastName'] = req.params['lname']
     data['Title'] = req.params['Title']
     data['Department'] = req.params['Department']
-    #data['Account'] = req.params['Organization']
 
     data['Phone'] = sqs_phone(req, 'Primary-Phone')
 
@@ -176,14 +175,15 @@ class SubscribeApplication(BaseApp):
         else:
             opp_name = 'NONE'
             sf_url = 'UNKNOWN'
-        is_expired = entry.expiration_time < datetime.utcnow()
+        if entry.expiration_time < datetime.utcnow():
+            is_expired = "*[EXPIRED]*"
 
         SlackAPI.notify('*Subscribe Browse Event:* '
                 'Key: {0}, Opportunity: {1}, Name: {2} ({3}), '
-                'Org: {4}, Type: {5} {6} Expiration {7} Expired: {8}' \
+                        'Type: {4} {5} Expiration {6} {7}' \
                 .format(entry.key, opp_name,
                         entry.name, entry.email,
-                        entry.organization, entry.hosting_type, sf_url,
+                        entry.hosting_type, sf_url,
                         to_localtime(entry.expiration_time).strftime("%x"),
                         is_expired))
 
