@@ -98,6 +98,7 @@ def get_plan_quantity_amount(entry):
                      * quantity
     return plan, quantity, amount
 
+
 class SupportApplication(BaseApp):
 
     def service_GET(self, req):
@@ -134,37 +135,49 @@ class HelloApplication(BaseApp):
         # This could be tracked :).
         return str(datetime.now())
 
+def update_add(update, sfkey, opportunity, param, data):
+    """Builds a Saleforce Opportunity update."""
+    if param in data:
+        value = data[param]
+        if opportunity[sfkey] != value:
+            update[sfkey] = value
+            return True
+    return False
 
 class LicenseApplication(BaseApp):
+    """This application responds to the controller 'license verify'"""
 
     @required_parameters('system-id', 'license-key',
                          'license-type', 'license-quantity')
     def service_POST(self, req):
-        """ Handle a Trial Registration
-        """
         key = req.params['license-key']
         entry = License.get_by_key(key)
         if entry is None:
             logger.error('Invalid license key: ' + key)
             raise exc.HTTPNotFound()
 
+        update = {}
+
         system_id = req.params['system-id']
         if entry.system_id and entry.system_id != system_id:
-            logger.error('System id from request {1} doesnt match DB {2}'\
+            logger.error('System id from request {1} doesn\'t match DB {2}'\
                          .format(key, system_id, entry.system_id))
-        entry.system_id = system_id
+            entry.system_id = system_id
+            update['System_ID__c'] = system_id
 
         license_type = req.params['license-type']
         if entry.type and entry.type != license_type:
-            logger.error('License type from request {1} doesnt match DB {2}'\
+            logger.error('License type from request {1} doesn\'t match DB {2}'\
                          .format(key, license_type, entry.type))
-        entry.type = license_type
+            entry.type = license_type
+            update['Tableau_App_License_Type__c'] = license_type
 
         license_quantity = req.params_getint('license-quantity', default=0)
         if entry.n and entry.n != license_quantity:
             logger.error('License quantity {1} doesn\'t match DB {2}'\
                          .format(key, license_quantity, entry.n))
-        entry.n = license_quantity
+            entry.n = license_quantity
+            update['Tableau_App_License_Count__c']
 
         logger.info('Updating license information for %s', key)
 
@@ -172,21 +185,50 @@ class LicenseApplication(BaseApp):
         session = get_session()
         session.commit()
 
-        keys = ['palette-version',
-                'tableau-version', 'tableau-bitness', 'primary-os-version',
-                'processor-type', 'processor-count', 'processor-bitness']
-
-        details = {}
-        for i in keys:
-            if req.params.get(i) is not None:
-                details[i] = req.params.get(i)
-        ServerInfo.upsert(entry.id, details)
-        SalesforceAPI.update_opportunity_details(entry, details)
-
-        return {'id': entry.id,
+        data = {'id': entry.id,
                 'trial': entry.istrial(),
                 'stage': Stage.get_by_id(entry.stageid).name,
                 'expiration-time': str(entry.expiration_time)}
+
+        sf = SalesforceAPI.connect()
+        opportunity = SalesforceAPI.get_opportunity_by_key(sf, key)
+        if opportunity is None:
+            logger.error("No opportunity for %s : %s", entry.name, key)
+            return data
+
+        update_add(update,
+                   'Palette_Version__c', opportunity, 
+                   'palette-version', req.params)
+        update_add(update,
+                   'Tableau_App_Version__c', opportunity, 
+                   'tableau-version', req.params)
+        update_add(update,
+                   'Primary_UUID__c', opportunity,
+                   'primary-uuid', req.params)
+        update_add(update,
+                   'Tableau_OS_Bit__c', opportunity,
+                   'processor-bitness', req.params)
+        update_add(update,
+                   'Processor_Type__c', opportunity,
+                   'processor-type', req.params)
+        update_add(update,
+                   'Processor_Count__c', opportunity,
+                   'processor-count', req.params)
+        update_add(update,
+                   'Tableau_OS_Version__c', opportunity,
+                   'primary-os-version', req.params)
+        update_add(update,
+                   'Tableau_App_Bit__c', opportunity,
+                   'tableau-bitness', req.params)
+
+        if 'agent-info' in req.params:
+            logger.info('%s: %s', key, str(req.params['agent-info']))
+
+        if update:
+            sf.Opportunity.update(opportunity['Id'], update)
+
+        return data
+
 
 # pylint: disable=invalid-name
 database = DATABASE
