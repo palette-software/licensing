@@ -19,27 +19,27 @@ class Stage(Base, BaseMixin):
 
     defaults = [{'key' : 'STAGE-TRIAL-REQUESTED',
                  'name': 'Trial Requested'},
-                {'key'  : 'STAGE-TRIAL-REGISTERED',
+                {'key'  : 'STAGE-TRIAL-REGISTERED', # UNUSED
                  'name': 'Trial Registered'},
-                {'key'  : 'STAGE-TRIAL-NOTINSTALLED',
+                {'key'  : 'STAGE-TRIAL-NOTINSTALLED', # UNUSED
                  'name': 'Trial Not Installed'},
-                {'key'  : 'STAGE-TRIAL-NORESPONSE',
+                {'key'  : 'STAGE-TRIAL-NORESPONSE', # UNUSED
                  'name': 'Trial No Response'},
                 {'key'  : 'STAGE-TRIAL-STARTED',
                  'name': 'Trial Started'},
                 {'key'  : 'STAGE-TRIAL-EXPIRED',
                  'name': 'Trial Expired'},
-                {'key'  : 'STAGE-TRIAL-EXTENDED',
+                {'key'  : 'STAGE-TRIAL-EXTENDED', # UNUSED
                  'name': 'Trial Extended'},
                 {'key'  : 'STAGE-LICENSE-EXPIRED',
                  'name': 'License Expired'},
-                {'key'  : 'STAGE-UP-FOR-RENEWAL',
+                {'key'  : 'STAGE-UP-FOR-RENEWAL', # UNUSED
                  'name': 'Up For Renewal'},
                 {'key'  : 'STAGE-CLOSED-WON',
                  'name': 'Closed Won'},
-                {'key'  : 'STAGE-REGISTERED-UNVERIFIED',
+                {'key'  : 'STAGE-REGISTERED-UNVERIFIED', # UNUSED
                  'name': 'Registered Unverified'},
-                {'key'  : 'STAGE-VERIFIED',
+                {'key'  : 'STAGE-VERIFIED', # UNUSED
                  'name': 'Verified User'}]
 
     @classmethod

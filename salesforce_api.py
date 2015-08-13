@@ -148,8 +148,11 @@ class SalesforceAPI(object):
     @classmethod
     def get_contact_id(cls, conn, email):
         """Retrieve a contact id by Email address."""
-        sql = "SELECT Name, id FROM Contact where Email='{0}'"
-        contact = conn.query(sql.format(email))
+        if not isinstance(email, Email):
+            email = Email(email)
+
+        sql = "SELECT Name, id FROM Contact where {0}='{1}'"
+        contact = conn.query(sql.format(CONTACT_EMAIL_BASE, email.base))
         if contact is None or contact['totalSize'] == 0:
             contactid = None
         elif contact['totalSize'] != 1:
@@ -180,9 +183,10 @@ class SalesforceAPI(object):
         return leadid
 
     @classmethod
-    def create_contact(cls, conn, fname, lname, email):
+    def create_contact(cls, conn, fname, lname, email, verified=True):
         """Create a new contact (that definitely doesn't exist) and optionally
         create the associated account.  Returns the contact_id."""
+        # pylint: disable=too-many-arguments
         if not isinstance(email, Email):
             email = Email(email)
 
@@ -201,7 +205,9 @@ class SalesforceAPI(object):
                 'Firstname': fname,
                 'Lastname': lname,
                 'Email': email.full,
-                CONTACT_EMAIL_BASE: email.base}
+                CONTACT_EMAIL_BASE: email.base,
+                CONTACT_VERIFIED: verified,
+        }
         contact = conn.Contact.create(data)
         contact_name = '{0} {1} <{2}>'.format(fname, lname, email.base)
         SlackAPI.info("*New Contact* (unverified): '" + contact_name + "'")

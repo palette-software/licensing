@@ -52,7 +52,9 @@ class RegisterApplication(BaseApp):
 
         contact_id = SalesforceAPI.get_contact_id(sf, email.base)
         if contact_id is None:
-            SalesforceAPI.create_contact(sf, fname, lname, email)
+            SalesforceAPI.create_contact(sf,
+                                         fname, lname,
+                                         email, verified=False)
 
         return redirect_verify(fname, lname, email)
 

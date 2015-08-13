@@ -30,13 +30,15 @@ def delete_from_sf(entry):
     """ Deletes a Salesforce Opportunity, and optionally
         the SF account and/or contact"""
 
-    print 'Deleting Opportunity \'{0}\''\
-           .format(SalesforceAPI.get_opportunity_name(entry))
-
     # SalesforceAPI.delete_contact(entry)
     # SalesforceAPI.delete_account(entry)
 
-    SalesforceAPI.delete_opportunity(entry)
+    sf = SalesforceAPI.connect()
+
+    opportunity = SalesforceAPI.get_opportunity_by_key(sf, entry.key)
+    if opportunity:
+        print "Deleting Opportunity '{0}'".format(opportunity['Name'])
+        sf.Opportunity.delete(opportunity['Id'])
 
 def delete_from_db(entry):
     """ Deletes the record from the licensing DB
