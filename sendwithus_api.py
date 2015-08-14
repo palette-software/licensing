@@ -54,7 +54,6 @@ class SendwithusAPI(object):
                       'firstname': contact['FirstName'],
                       'lastname': contact['LastName'],
                       'email': contact['Email'], # entry.email is the base
-                      'organization': entry.organization,
                       'hosting_type': entry.hosting_type,
                       'promo_code': entry.promo_code,
                       'subdomain': entry.subdomain,

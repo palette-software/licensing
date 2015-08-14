@@ -2,7 +2,7 @@ import logging
 
 from stage import Stage
 from system import System
-from utils import to_localtime, get_netloc, domain_only
+from utils import get_netloc, domain_only
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 
 from contact import Email
@@ -65,7 +65,6 @@ class SalesforceAPI(object):
     def get_account_id(cls, conn, website):
         """ Lookup an account and return the id
         """
-        conn = cls._get_connection()
         sql = "SELECT Name, id, Website FROM Account where Website='{0}'"
         account = conn.query(sql.format(website))
         if account is None or account['totalSize'] == 0:
@@ -83,73 +82,6 @@ class SalesforceAPI(object):
         if account_id is None:
             return None
         return conn.Account.get(account_id)
-
-    @classmethod
-    def lookup_account(cls, data):
-        """ Lookup an account and return the id
-        """
-        conn = cls._get_connection()
-        sql = "SELECT Name, id, Website FROM Account where Website='{0}'"
-        account = conn.query(sql.format(data.website))
-        if account is None or account['totalSize'] == 0:
-            accountid = None
-        else:
-            accountid = account['records'][0]['Id']
-        return accountid
-
-    @classmethod
-    def lookup_or_create_account(cls, data):
-        """ Lookup or create an account using the supplied data
-        """
-        accountid = cls.lookup_account(data)
-        if accountid is None:
-            conn = cls._get_connection()
-            account = conn.Account.create({'Name':data.organization,
-                                         'Website':data.website,
-                                         'Phone':data.phone})
-            accountid = account['id']
-            logger.info('Creating Account Name %s Id %s',
-                        data.organization, accountid)
-        return accountid
-
-    @classmethod
-    def update_account(cls, data):
-        """ Update an account
-        """
-        accountid = cls.lookup_account(data)
-        if accountid is None:
-            conn = cls._get_connection()
-            conn.Account.update(accountid,
-                               {'Name':data.organization,
-                                'Website':data.website,
-                                'Phone':data.phone})
-            logger.info('Updating Account Name %s Id %s',
-                        data.organization, accountid)
-
-    @classmethod
-    def delete_account(cls, data):
-        """ Delete an account
-        """
-        accountid = cls.lookup_account(data)
-        if accountid is not None:
-            conn = cls._get_connection()
-            conn.Account.delete(accountid)
-            logger.info('Deleted Account Name %s Id %s',
-                        data.organization, accountid)
-
-    @classmethod
-    def lookup_contact(cls, data):
-        """ Lookup a contact
-        """
-        conn = cls._get_connection()
-        sql = "SELECT Name, id " +\
-              "FROM Contact where Firstname='{0}' and Lastname='{1}'"
-        contact = conn.query(sql.format(data.firstname, data.lastname))
-        if contact is None or contact['totalSize'] == 0:
-            contactid = None
-        else:
-            contactid = contact['records'][0]['Id']
-        return contactid
 
     @classmethod
     def get_contact_id(cls, conn, email):
@@ -221,50 +153,6 @@ class SalesforceAPI(object):
 
         return contact['id'] # NOTE lowercase 'id' on create() response
 
-
-    @classmethod
-    def lookup_or_create_contact(cls, data, accountid):
-        """ Lookup or create contact
-        """
-        fields = None
-        contactid = cls.lookup_contact(data)
-        if contactid is None:
-            # if contact doesnt exist try leads
-            lead = cls.lookup_lead(data)
-            if lead is not None:
-                # if a lead exists create a contact with the lead info
-                fields = {'Firstname':lead['FirstName'],
-                          'Lastname':lead['LastName'],
-                          'Email':lead['Email'],
-                          'Phone':lead['Phone']}
-                logger.info('Created contact from lead %s %s %s',
-                            data.firstname, data.lastname, lead['Id'])
-
-                # then delete the lead
-                cls.delete_lead(lead['Id'])
-
-            if fields is None:
-                fields = {'Firstname':data.firstname,
-                          'Lastname':data.lastname,
-                          'Email':data.email,
-                          'Phone':data.phone,
-                          'AccountId':accountid,
-                          'Admin_Role__c':data.admin_role}
-
-            # create the new contact if it doesnt exist and no lead exists
-            accountid = cls.lookup_or_create_account(data)
-
-            conn = cls._get_connection()
-            contact = conn.Contact.create(fields)
-            contactid = contact['id']
-
-            logger.info('Created Contact Name %s %s Id %s',
-                        data.firstname, data.lastname, contactid)
-        else:
-            logger.info('Contact Id already exists %s', contactid)
-
-        return contactid
-
     @classmethod
     def upsert_contact(cls, conn, account_id, data):
         """Create or update a contact."""
@@ -305,45 +193,6 @@ class SalesforceAPI(object):
         return record['id']
 
     @classmethod
-    def update_contact(cls, data):
-        """ Update Contact
-        """
-        contactid = cls.lookup_contact(data)
-        if contactid is not None:
-            conn = cls._get_connection()
-            conn.Contact.update(contactid,
-                                      {'Firstname':data.firstname,
-                                       'Lastname':data.lastname,
-                                       'Email':data.email,
-                                       'Phone':data.phone,
-                                       'Admin_Role__c':data.admin_role})
-            logger.info('Updating Contact Name %s %s Id %s',
-                        data.firstname, data.lastname, contactid)
-
-    @classmethod
-    def delete_contact(cls, data):
-        """ Deletes a contact
-        """
-        contactid = cls.lookup_contact(data)
-        if contactid is not None:
-            conn = cls._get_connection()
-            conn.Contact.delete(contactid)
-            logger.info('Deleted Contact Name %s %s Id %s',
-                        data.firstname, data.lastname, contactid)
-
-    @classmethod
-    def lookup_opportunity(cls, key):
-        """ Looks up opportunity and returns a dict
-        """
-        conn = cls._get_connection()
-        sql = "SELECT Name, id FROM Opportunity " +\
-              "WHERE Palette_License_Key__c='{0}'"
-        opp = conn.query(sql.format(key))
-        if opp is not None and opp['totalSize'] == 1:
-            return opp['records'][0]
-        return None
-
-    @classmethod
     def get_opportunity_id(cls, conn, key):
         """ Find an opportunity id by license key"""
         sql = "SELECT Name, id FROM Opportunity " +\
@@ -366,66 +215,6 @@ class SalesforceAPI(object):
         return conn.Opportunity.get(oppid)
 
     @classmethod
-    def get_opportunity_name(cls, data):
-        """ Looks up opportunity name based on key
-        """
-        opp = cls.lookup_opportunity(data.key)
-        if opp is not None:
-            return opp['Name']
-        return '*Opportunity not found*'
-
-    @classmethod
-    def format_opportunity_name(cls, data):
-        """ Returns the standard name for an opportunity
-        """
-        name = data.organization + ' ' + \
-               data.firstname + ' ' + data.lastname + ' ' +\
-               to_localtime(data.registration_start_time).strftime('%x %X')
-        return name
-
-    @classmethod
-    def license_to_oppname(cls, full_name, entry):
-        """ Returns the standard name for an opportunity
-        """
-        name = entry.organization + ' ' + full_name + ' ' +\
-               to_localtime(entry.registration_start_time).strftime('%x %X')
-        return name
-
-    @classmethod
-    def new_opportunity(cls, data):
-        """ Create a new Salesforce Opportunity
-        """
-        accountid = cls.lookup_or_create_account(data)
-        contactid = cls.lookup_or_create_contact(data, accountid)
-
-        name = cls.format_opportunity_name(data)
-
-        conn = cls._get_connection()
-        row = {'Name':name, 'AccountId':accountid,
-                 'StageName': Stage.get_by_id(data.stageid).name,
-                 'CloseDate': data.expiration_time.isoformat(),
-                 'Expiration_Date__c': data.expiration_time.isoformat(),
-                 'Palette_License_Key__c': data.key,
-                 'Palette_Server_Time_Zone__c': data.timezone,
-                 'Hosting_Type__c':data.hosting_type,
-                 'AWS_Region__c':data.aws_zone,
-                 'Palette_Cloud_subdomain__c':data.subdomain,
-                 'Promo_Code__c':data.promo_code,
-                 'Trial_Request_Date_Time__c':\
-                                 data.registration_start_time.isoformat(),
-                 'Access_Key__c':data.access_key,
-                 'Secret_Access_Key__c':data.secret_key,
-                 'Amount':data.amount}
-        if data.productid is not None:
-            row['Palette_Plan__c'] = Product.get_by_id(data.productid).name
-        opp = conn.Opportunity.create(row)
-
-        logger.info('Creating new opportunity with Contact ' + \
-                    'Name %s %s Account Id %s Contact Id %s',
-                    data.firstname, data.lastname, accountid, contactid)
-        return opp['id']
-
-    @classmethod
     def create_opportunity(cls, conn, name, account_id, entry, slack=True):
         """ Create a new Salesforce Opportunity from a licensing entry.
         Returns the opportunity id.
@@ -438,7 +227,6 @@ class SalesforceAPI(object):
                'CloseDate': entry.expiration_time.isoformat(),
                'Expiration_Date__c': entry.expiration_time.isoformat(),
                'Palette_License_Key__c': entry.key,
-               'Palette_Server_Time_Zone__c': entry.timezone,
                'Hosting_Type__c': entry.hosting_type,
                'AWS_Region__c': entry.aws_zone,
                'Promo_Code__c' :entry.promo_code,
@@ -457,10 +245,8 @@ class SalesforceAPI(object):
         return opp['id']
 
     @classmethod
-    def update_opportunity(cls, data):
-        """ Update a Salesforce Opportunity
-        """
-        conn = cls._get_connection()
+    def update_opportunity(cls, conn, data):
+        """ Update a Salesforce Opportunity"""
         sql = "SELECT Name, id FROM Opportunity " +\
               "WHERE Palette_License_Key__c='{0}'"
         opp = conn.query(sql.format(data.key))
@@ -499,73 +285,3 @@ class SalesforceAPI(object):
 
             return oppid
         return None
-
-
-
-    @classmethod
-    def update_opportunity_details(cls, data, details):
-        """ Updates the details that are usually stored in the server
-            info table onto Salesforce
-        """
-        conn = cls._get_connection()
-        sql = "SELECT Name, id FROM Opportunity " +\
-              "WHERE Palette_License_Key__c='{0}'"
-        opp = conn.query(sql.format(data.key))
-        if opp is not None and opp['totalSize'] == 1:
-            oppid = opp['records'][0]['Id']
-
-            field_map = {'palette-version':'Palette_Version__c',
-                         'tableau-version':'Tableau_App_Version__c',
-                         'tableau-bitness':'Tableau_App_Bit__c',
-                         'processor-type':'Processor_Type__c',
-                         'processor-count':'Processor_Count__c',
-                         'processor-bitness':'Processor_Bitness__c',
-                         'primary-os-version':'Tableau_OS_Version__c'}
-            row = {}
-            for i in details.keys():
-                if i in field_map:
-                    row[field_map[i]] = details[i]
-            conn.Opportunity.update(oppid, row)
-
-    @classmethod
-    def delete_opportunity(cls, data):
-        """ Delete an opportunity
-        """
-        conn = cls._get_connection()
-        sql = "SELECT Name, id FROM Opportunity " +\
-              "WHERE Palette_License_Key__c='{0}'"
-        opp = conn.query(sql.format(data.key))
-        if opp is not None and opp['totalSize'] == 1:
-            logger.info('Deleting opportunity Key %s Stage %s',
-                        data.key, Stage.get_by_id(data.stageid).name)
-
-            oppid = opp['records'][0]['Id']
-            conn.Opportunity.delete(oppid)
-
-    @classmethod
-    def lookup_lead(cls, data):
-        """ Lookup a lead
-        """
-        conn = cls._get_connection()
-        sql = "SELECT Id, Firstname, Lastname, Email, Company, " + \
-              "       Phone, Website " + \
-              "FROM Lead where Email='{0}'"
-        lead = conn.query(sql.format(data.email))
-        if lead is None or lead['totalSize'] == 0:
-            result = None
-        else:
-            result = lead['records'][0]
-        return result
-
-    @classmethod
-    def delete_lead(cls, leadid):
-        """ Delete a lead
-        """
-        conn = cls._get_connection()
-        sql = "SELECT id " + \
-              "FROM Lead where id='{0}'".format(leadid)
-        lead = conn.query(sql.format(leadid))
-        if lead is not None or lead['totalSize'] == 1:
-            logger.info('Deleting lead id %s', leadid)
-            conn.Lead.delete(leadid)
-

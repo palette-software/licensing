@@ -63,11 +63,7 @@ class License(Base):
     email = Column(String, nullable=False) # FIXME: unique
 
     # FIXME: move to Salesforce
-    organization = Column(String)
-    timezone = Column(String)
     website = Column(String)
-    phone = Column(String)
-    admin_role = Column(String)
 
     # AWS, VMWare or Palette Pro
     hosting_type = Column(String)

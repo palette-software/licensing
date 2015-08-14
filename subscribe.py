@@ -167,7 +167,8 @@ class SubscribeApplication(BaseApp):
         data['price'] = plan.price
         data['quantity'] = plan.quantity
 
-        opportunity = SalesforceAPI.lookup_opportunity(key)
+        sf = SalesforceAPI.connect()
+        opportunity = SalesforceAPI.get_opportunity_by_key(sf, key)
         if opportunity:
             opp_id = opportunity['Id']
             opp_name = opportunity['Name']

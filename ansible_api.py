@@ -10,7 +10,6 @@ from system import System
 from licensing import License
 from sendwithus_api import SendwithusAPI
 from slack_api import SlackAPI
-from salesforce_api import SalesforceAPI
 from boto_api import BotoAPI
 
 logger = logging.getLogger('licensing')
@@ -57,8 +56,7 @@ def run_process(entry, contact, success_mailid, fail_mailid):
         temp.close()
 
         SlackAPI.notify('*Failed to launch Palette Pro Instance.* '
-                'Opportunity: {0}\n{1}'.format(
-                SalesforceAPI.get_opportunity_name(entry), out))
+                'Opportunity: {0}\n{1}'.format(entry.name, out))
 
         #SendwithusAPI.send_message(fail_mailid,
         #            'hello@palette-software.com',

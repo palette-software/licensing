@@ -7,7 +7,6 @@ URL := ubuntu@licensing.palette-software.com
 FILES := application.wsgi \
 	application.py \
 	licensing.py \
-        license_manager.py \
 	mixin.py \
 	salesforce_api.py \
 	sendwithus_api.py \
@@ -15,6 +14,7 @@ FILES := application.wsgi \
 	ansible_api.py \
 	boto_api.py \
 	contact.py \
+	license_manager.py \
 	support.py \
 	stage.py \
 	plan.py \

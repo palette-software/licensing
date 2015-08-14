@@ -49,6 +49,11 @@ def unique_name(name):
 
     return to_try
 
+def default_opportunity_name(full_name, org, utcts):
+    """ Returns the standard name for an opportunity"""
+    timestamp = to_localtime(utcts).strftime('%x %X')
+    return org + ' ' + full_name + ' ' + timestamp
+
 def default_expiration():
     days = int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS'))
     return time_from_today(days=days)
@@ -59,6 +64,8 @@ def generate_license(sf, contact, product,
     # pylint: disable=too-many-arguments
     # pylint: disable=too-many-locals
     email = contact[SalesforceAPI.CONTACT_EMAIL_BASE]
+
+    # FIXME
     org = get_netloc(domain_only(email)).lower()
 
     if name is None:
@@ -77,14 +84,6 @@ def generate_license(sf, contact, product,
     entry.expiration_time = expiration
     entry.stageid = stage.id
 
-    entry.organization = org
-    entry.website = org
-
-    # FIXME: remove
-    logger.info('{0} {1} {2}'.format(entry.organization,
-                                     entry.subdomain,
-                                     entry.name))
-
     entry.registration_start_time = datetime.utcnow()
     entry.productid = Product.get_by_key(Product.PRO_KEY).id
     if product.key == Product.PRO_KEY:
@@ -98,7 +97,8 @@ def generate_license(sf, contact, product,
     session.commit()
 
     # create the opportunity
-    opportunity_name = SalesforceAPI.license_to_oppname(contact['Name'], entry)
+    opportunity_name = default_opportunity_name(contact['Name'], org,
+                                                entry.registration_start_time)
     opp_id = SalesforceAPI.create_opportunity(sf, opportunity_name,
                                               contact['AccountId'], entry,
                                               slack=slack)
@@ -241,7 +241,8 @@ class TrialStartApplication(BaseApp):
               .format(key, entry.expiration_time))
 
             # update the opportunity
-            opp_id = SalesforceAPI.update_opportunity(entry)
+            sf = SalesforceAPI.connect()
+            opp_id = SalesforceAPI.update_opportunity(sf, entry)
 
             # FIXME
             sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
@@ -270,7 +271,8 @@ class TrialStartApplication(BaseApp):
                         .format(key, entry.expiration_time))
 
             # update the opportunity
-            opp_id = SalesforceAPI.update_opportunity(entry)
+            sf = SalesforceAPI.connect()
+            opp_id = SalesforceAPI.update_opportunity(sf, entry)
 
             sf = SalesforceAPI.connect()
             contact = SalesforceAPI.get_contact_by_email(sf, entry.email)

@@ -68,7 +68,6 @@ def cleanup(**kwargs):
 
     # save info before deleting
     email = result.email
-    name = SalesforceAPI.get_opportunity_name(result)
     hosting_type = result.hosting_type
 
     if not kwargs.get('no_db'):
