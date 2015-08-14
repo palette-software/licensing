@@ -9,10 +9,11 @@ from datetime import datetime
 from akiri.framework.sqlalchemy import create_engine
 
 from contact import Email
-from utils import time_from_today
-from license_manager import LicenseManager
+from product import Product
 from ansible_api import AnsibleAPI
 from salesforce_api import SalesforceAPI
+
+from trial import generate_license
 
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
 
@@ -37,41 +38,41 @@ if __name__ == '__main__':
     parser.add_argument('--fullname',
         help='Set the fullname for the license. Has to be "Firstname Lastname',
         required=True)
-    parser.add_argument('--name',
-        help='Sets the unique license name',
-        required=True)
     parser.add_argument('--email',
         help='Sets the email address for the license',
         required=True)
+    parser.add_argument('--name',
+        help='Sets the unique license name', default=None,
+        required=False)
     parser.add_argument('--stage',
         help='Sets the stage. If not specified uses STAGE-TRIAL-REQUESTED',
         required=False,
-        choices=['STAGE-TRIAL-REQUESTED',
-                 'STAGE-TRIAL-REGISTERED',
-                 'STAGE-VERIFIED',
-                 'STAGE-CLOSED-WON'])
+        choices=['STAGE-TRIAL-REQUESTED', 'STAGE-CLOSED-WON'])
     parser.add_argument('--expires',
         help='Sets expiration date. Has to be in the format MM/DD/YY',
         required=False)
     parser.add_argument('--product',
         help='Sets the Product',
-        required=True,
-        choices=['PALETTE-PRO', 'PALETTE-ENT'])
+        required=False, default=Product.PRO_KEY,
+        choices=[Product.PRO_KEY, Product.ENT_KEY])
     parser.add_argument('--send_email',
         help='Send an email to the user. '
              'If not specified no email will be sent',
-        required=False,
+        required=False, default=False,
+        action='store_true')
+    parser.add_argument('--slack',
+        help='Send the usual Slack messages',
+        required=False, default=False,
         action='store_true')
     parser.add_argument('--launch',
         help='Launch an instance. If not specified no instance is launched',
-        required=False,
+        required=False, default=False,
         action='store_true')
-    parser.set_defaults(send_email=False, launch=False)
     args = parser.parse_args()
 
     parts = args.fullname.split(' ')
-    fn = parts[0]
-    ln = parts[1]
+    fname = parts[0]
+    lname = parts[1]
     email = Email(args.email)
 
     if args.product == 'PALETTE-PRO':
@@ -82,7 +83,7 @@ if __name__ == '__main__':
     if args.expires is not None:
         expiration = datetime.strptime(args.expires, '%x')
     else:
-        expiration = time_from_today(months=1)
+        expiration = None # use default
 
     if args.stage is not None:
         stage = args.stage
@@ -91,20 +92,18 @@ if __name__ == '__main__':
 
     # FIXME: create if needed.
     sf = SalesforceAPI.connect()
-    contact = sf.get_contact_by_email(email.base)
+    contact = SalesforceAPI.get_contact_by_email(sf, email.base)
     if contact is None:
-        # FIXME
-        raise Exception("contact doesn't exist yet")
+        contact_id = SalesforceAPI.create_contact(sf, fname, lname, email,
+                                                  slack=args.slack)
+        contact = sf.Contact.get(contact_id)
 
-    # FIXME: remove new_license
-    entry = LicenseManager.new_license(args.name, contact=contact,
-                                       product=args.product,
-                                       stage=stage,
-                                       expiration=expiration,
-                                       mailid=mailid,
-                                       send_email=args.send_email)
-    if entry is None:
-        sys.exit(1)
+    product = Product.get_by_key(args.product)
+
+    entry = generate_license(sf, contact, product, name=args.name,
+                             stage_key=stage, expiration=expiration,
+                             send_email=args.send_email,
+                             slack=args.slack)
 
     if args.product == 'PALETTE-PRO' and args.launch:
         AnsibleAPI.launch_instance(entry, contact,

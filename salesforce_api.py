@@ -15,6 +15,12 @@ CONTACT_EMAIL_BASE = 'Base_Email__c'
 
 logger = logging.getLogger('licensing')
 
+def info(msg, slack=True):
+    if slack:
+        SlackAPI.info(msg)
+    else:
+        logger.info(msg)
+
 class SalesforceAPI(object):
     """ Class that uses the salesforce python module to create
         Contcts, Accounts and Opportunities
@@ -183,7 +189,8 @@ class SalesforceAPI(object):
         return leadid
 
     @classmethod
-    def create_contact(cls, conn, fname, lname, email, verified=True):
+    def create_contact(cls, conn, fname, lname, email,
+                       verified=True, slack=True):
         """Create a new contact (that definitely doesn't exist) and optionally
         create the associated account.  Returns the contact_id."""
         # pylint: disable=too-many-arguments
@@ -198,8 +205,7 @@ class SalesforceAPI(object):
             account = conn.Account.create({'Name': website,
                                            'Website': website})
             account_id = account['id']
-            SlackAPI.info("*New Account*: '" + website + "'")
-        # FIXME: contact role.
+            info("*New Account*: '" + website + "'", slack=slack)
 
         data = {'AccountId': account_id,
                 'Firstname': fname,
@@ -209,8 +215,10 @@ class SalesforceAPI(object):
                 CONTACT_VERIFIED: verified,
         }
         contact = conn.Contact.create(data)
+
         contact_name = '{0} {1} <{2}>'.format(fname, lname, email.base)
-        SlackAPI.info("*New Contact* (unverified): '" + contact_name + "'")
+        info("*New Contact* (unverified): '" + contact_name + "'", slack=slack)
+
         return contact['id'] # NOTE lowercase 'id' on create() response
 
 
@@ -395,10 +403,11 @@ class SalesforceAPI(object):
         return opp['id']
 
     @classmethod
-    def create_opportunity(cls, conn, name, account_id, entry):
+    def create_opportunity(cls, conn, name, account_id, entry, slack=True):
         """ Create a new Salesforce Opportunity from a licensing entry.
         Returns the opportunity id.
         """
+        # pylint: disable=too-many-arguments
         registration_start_time = entry.registration_start_time.isoformat()
 
         row = {'Name':name, 'AccountId':account_id,
@@ -418,7 +427,7 @@ class SalesforceAPI(object):
         if entry.productid is not None:
             row['Palette_Plan__c'] = Product.get_by_id(entry.productid).name
         opp = conn.Opportunity.create(row)
-        SlackAPI.info("*New Opportunity* " + name)
+        info("*New Opportunity* " + name, slack=slack)
         return opp['id']
 
     @classmethod

@@ -55,6 +55,8 @@ class RegisterApplication(BaseApp):
             SalesforceAPI.create_contact(sf,
                                          fname, lname,
                                          email, verified=False)
+        else:
+            SlackAPI.warning("Existing contact '{0}'".format(email.full))
 
         return redirect_verify(fname, lname, email)
 

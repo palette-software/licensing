@@ -49,6 +49,90 @@ def unique_name(name):
 
     return to_try
 
+def default_expiration():
+    days = int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS'))
+    return time_from_today(days=days)
+
+def generate_license(sf, contact, product,
+                     name=None, stage_key=None, expiration=None,
+                     send_email=True, slack=True):
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-locals
+    email = contact[SalesforceAPI.CONTACT_EMAIL_BASE]
+    org = get_netloc(domain_only(email)).lower()
+
+    if name is None:
+        name = unique_name(hostname_only(org))
+    if stage_key is None:
+        stage_key = 'STAGE-TRIAL-REQUESTED'
+    stage = Stage.get_by_key(stage_key)
+    if expiration is None:
+        expiration = default_expiration()
+
+    logger.info('New trial request for %s', contact['Email'])
+    entry = License()
+    entry.key = str(uuid.uuid4())
+    entry.name = name
+    entry.email = email
+    entry.expiration_time = expiration
+    entry.stageid = stage.id
+
+    entry.organization = org
+    entry.website = org
+
+    logger.info('{0} {1} {2}'.format(entry.organization,
+                                     entry.subdomain,
+                                     entry.name))
+
+    entry.registration_start_time = datetime.utcnow()
+    entry.productid = Product.get_by_key(Product.PRO_KEY).id
+    if product.key == Product.PRO_KEY:
+        entry.subdomain = entry.name
+        entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
+        entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
+
+    # FIXME
+    session = get_session()
+    session.add(entry)
+    session.commit()
+
+    # create or use an existing opportunity
+    opportunity_name = SalesforceAPI.license_to_oppname(contact['Name'], entry)
+    opp_id = SalesforceAPI.create_opportunity(sf, opportunity_name,
+                                              contact['AccountId'], entry,
+                                              slack=slack)
+
+    # subscribe the user to the trial list
+    email_data = SendwithusAPI.gather_email_data(contact, entry)
+    if product.key == Product.PRO_KEY:
+        if send_email:
+            SendwithusAPI.subscribe_user('SENDWITHUS-TRIAL-REQUESTED-PRO-ID',
+                                         'hello@palette-software.com',
+                                         entry.email,
+                                         email_data)
+
+    else:
+        if send_email:
+            SendwithusAPI.subscribe_user('SENDWITHUS-TRIAL-REQUESTED-ENT-ID',
+                                         'hello@palette-software.com',
+                                         entry.email,
+                                         email_data)
+            SendwithusAPI\
+                .send_message('SENDWITHUS-TRIAL-REQUESTED-ENT-INTERNAL-ID',
+                              'licensing@palette-software.com',
+                              'support@palette-software.com',
+                              email_data)
+
+    sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
+    expiration_time = to_localtime(entry.expiration_time).strftime("%x")
+    if slack:
+        SlackAPI.info('*{0}* Opportunity: '
+                      '{1} ({2}) - Type: {3} {4} Expiration {5}'.format(
+                          stage.name, opportunity_name, contact['Email'],
+                          product.name, sf_url, expiration_time))
+
+    return entry
+
 
 class TrialRequestApplication(BaseApp):
     """
@@ -68,7 +152,6 @@ class TrialRequestApplication(BaseApp):
         lname = req.params['lname']
         email = Email(req.params['email'])
         plan = req.params['plan']
-        full_name = fname + ' ' + lname
 
         sf = SalesforceAPI.connect()
 
@@ -89,85 +172,27 @@ class TrialRequestApplication(BaseApp):
             contact = SalesforceAPI.get_contact_by_email(sf, key)
 
         # Here we have a verified contact.
-        account_id = contact['AccountId']
+
+        if plan == PALETTE_PRO:
+            product = Product.get_by_key(Product.PRO_KEY)
+            redirect_url = System.get_by_key('TRIAL-REQUEST-REDIRECT-PRO-URL')
+        elif plan == PALETTE_ENT:
+            product = Product.get_by_key(Product.ENT_KEY)
+            redirect_url = System.get_by_key('TRIAL-REQUEST-REDIRECT-ENT-URL')
+        # else?
 
         entry = License.get_by_email(email.base)
         if entry:
             SlackAPI.warning('Existing trial for ' + email.base)
-            if entry.product.key == Product.PRO_KEY:
-                url = System.get_by_key('TRIAL-REQUEST-REDIRECT-PRO-URL')
-            else:
-                url = System.get_by_key('TRIAL-REQUEST-REDIRECT-ENT-URL')
-            return redirect_to_sqs(url)
+            return redirect_to_sqs(redirect_url)
 
-        stage = Stage.get_by_key('STAGE-TRIAL-REQUESTED')
-
-        logger.info('New trial request for %s', email)
-        entry = License()
-        entry.email = email.base
-        entry.key = str(uuid.uuid4())
-        entry.expiration_time = time_from_today(
-                days=int(System.get_by_key('TRIAL-REQ-EXPIRATION-DAYS')))
-        entry.stageid = stage.id
-        entry.organization = get_netloc(domain_only(entry.email)).lower()
-        entry.website = entry.organization
-        entry.subdomain = unique_name(hostname_only(entry.organization))
-        entry.name = entry.subdomain
-        logger.info('{0} {1} {2}'.format(entry.organization,
-                                         entry.subdomain,
-                                         entry.name))
-
-        entry.registration_start_time = datetime.utcnow()
+        entry = generate_license(sf, contact, product)
         if plan == PALETTE_PRO:
-            entry.productid = Product.get_by_key(Product.PRO_KEY).id
-            entry.aws_zone = BotoAPI.get_region_by_name(entry.aws_zone)
-            entry.access_key, entry.secret_key = BotoAPI.create_s3(entry)
-        else:
-            entry.productid = Product.get_by_key(Product.ENT_KEY).id
-
-        # FIXME
-        session = get_session()
-        session.add(entry)
-        session.commit()
-
-        # create or use an existing opportunity
-        opportunity_name = SalesforceAPI.license_to_oppname(full_name, entry)
-        opp_id = SalesforceAPI.create_opportunity(sf, opportunity_name,
-                                                  account_id, entry)
-
-        # subscribe the user to the trial list
-        email_data = SendwithusAPI.gather_email_data(contact, entry)
-        if plan == PALETTE_PRO:
-            SendwithusAPI.subscribe_user('SENDWITHUS-TRIAL-REQUESTED-PRO-ID',
-                                         'hello@palette-software.com',
-                                         entry.email,
-                                         email_data)
-
             AnsibleAPI.launch_instance(entry, contact,
                                        'PALETTECLOUD-LAUNCH-SUCCESS-ID',
                                        'PALETTECLOUD-LAUNCH-FAIL-ID')
-            url = System.get_by_key('TRIAL-REQUEST-REDIRECT-PRO-URL')
 
-        else:
-            SendwithusAPI.subscribe_user('SENDWITHUS-TRIAL-REQUESTED-ENT-ID',
-                                         'hello@palette-software.com',
-                                         entry.email,
-                                         email_data)
-            SendwithusAPI\
-               .send_message('SENDWITHUS-TRIAL-REQUESTED-ENT-INTERNAL-ID',
-                             'licensing@palette-software.com',
-                             'support@palette-software.com',
-                             email_data)
-            url = System.get_by_key('TRIAL-REQUEST-REDIRECT-ENT-URL')
-
-        sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
-        expiration_time = to_localtime(entry.expiration_time).strftime("%x")
-        SlackAPI.info('*{0}* Opportunity: '
-                      '{1} ({2}) - Type: {3} {4} Expiration {5}'.format(
-                          stage.name, opportunity_name, email.full,
-                          plan, sf_url, expiration_time))
-
-        return redirect_to_sqs(url)
+        return redirect_to_sqs(redirect_url)
 
 
 class TrialStartApplication(BaseApp):

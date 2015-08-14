@@ -112,7 +112,7 @@ class LicenseApplication(BaseApp):
             logger.error('License quantity {1} doesn\'t match DB {2}'\
                          .format(key, license_quantity, entry.n))
             entry.n = license_quantity
-            update['Tableau_App_License_Count__c']
+            update['Tableau_App_License_Count__c'] = license_quantity
 
         logger.info('Updating license information for %s', key)
 

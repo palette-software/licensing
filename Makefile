@@ -30,9 +30,7 @@ SCRIPTS := \
 	support-connect \
 	support-define-port \
 	license-cleanup \
-        license-create \
-	license-sync \
-        license-update
+        license-create
 
 all: pylint
 .PHONY: all
