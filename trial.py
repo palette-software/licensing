@@ -80,6 +80,7 @@ def generate_license(sf, contact, product,
     entry.organization = org
     entry.website = org
 
+    # FIXME: remove
     logger.info('{0} {1} {2}'.format(entry.organization,
                                      entry.subdomain,
                                      entry.name))
@@ -96,11 +97,14 @@ def generate_license(sf, contact, product,
     session.add(entry)
     session.commit()
 
-    # create or use an existing opportunity
+    # create the opportunity
     opportunity_name = SalesforceAPI.license_to_oppname(contact['Name'], entry)
     opp_id = SalesforceAPI.create_opportunity(sf, opportunity_name,
                                               contact['AccountId'], entry,
                                               slack=slack)
+
+    # Add a primary,'Evaluator' contact role to the opportunity for 'contact'
+    SalesforceAPI.add_contact_role(sf, opp_id, contact['Id'])
 
     # subscribe the user to the trial list
     email_data = SendwithusAPI.gather_email_data(contact, entry)

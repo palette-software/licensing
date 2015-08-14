@@ -279,7 +279,30 @@ class SalesforceAPI(object):
             conn.Contact.update(contact['Id'], data)
         else:
             contact = conn.Contact.create(data)
-        return contact
+        return contact['id']
+
+    @classmethod
+    def contact_roles(cls, conn, opportunity_id):
+        """Return all the contact roles for a particular opportunity."""
+        soql = "SELECT Id,OpportunityId,ContactId,Role,IsPrimary " +\
+               "FROM OpportunityContactRole " +\
+               "WHERE OpportunityId = '{0}'"
+        roles = conn.query(soql.format(opportunity_id))
+        if roles['totalSize'] == 0:
+            return None
+        return roles['records']
+
+    @classmethod
+    def add_contact_role(cls, conn, opportunity_id, contact_id,
+                         primary=True, role='Evaluator'):
+        """Create a new contact role and return the record id."""
+        # pylint: disable=too-many-arguments
+        data = {'OpportunityId': opportunity_id,
+                'ContactId': contact_id,
+                'IsPrimary': primary,
+                'Role': role}
+        record = conn.OpportunityContactRole.create(data)
+        return record['id']
 
     @classmethod
     def update_contact(cls, data):
