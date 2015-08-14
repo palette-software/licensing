@@ -433,20 +433,23 @@ class SalesforceAPI(object):
         # pylint: disable=too-many-arguments
         registration_start_time = entry.registration_start_time.isoformat()
 
-        row = {'Name':name, 'AccountId':account_id,
+        row = {'Name': name, 'AccountId': account_id,
                'StageName': Stage.get_by_id(entry.stageid).name,
                'CloseDate': entry.expiration_time.isoformat(),
                'Expiration_Date__c': entry.expiration_time.isoformat(),
                'Palette_License_Key__c': entry.key,
                'Palette_Server_Time_Zone__c': entry.timezone,
-               'Hosting_Type__c':entry.hosting_type,
-               'AWS_Region__c':entry.aws_zone,
-               'Palette_Cloud_subdomain__c':entry.subdomain,
-               'Promo_Code__c':entry.promo_code,
+               'Hosting_Type__c': entry.hosting_type,
+               'AWS_Region__c': entry.aws_zone,
+               'Promo_Code__c' :entry.promo_code,
                'Trial_Request_Date_Time__c': registration_start_time,
-               'Access_Key__c':entry.access_key,
-               'Secret_Access_Key__c':entry.secret_key,
+               'Access_Key__c': entry.access_key,
+               'Secret_Access_Key__c': entry.secret_key,
                'Amount':entry.amount} # FIXME: is this valid?
+        if not entry.id is None:
+            row['Palette_Domain_ID__c'] = entry.id,
+        if entry.subdomain:
+            row['Palette_Cloud_subdomain__c'] = entry.subdomain,
         if entry.productid is not None:
             row['Palette_Plan__c'] = Product.get_by_id(entry.productid).name
         opp = conn.Opportunity.create(row)
