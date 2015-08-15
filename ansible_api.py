@@ -84,7 +84,7 @@ def run_process(entry, contact, success_mailid, fail_mailid):
                     'hello@palette-software.com',
                     contact['Email'], data=email_data)
 
-        SlackAPI.notify('*Succesfully launched Palette Pro Instance.*: ' + \
+        SlackAPI.notify('*Succesfully launched Palette Pro Instance* : ' + \
                         entry.name)
 
 class AnsibleAPI(object):

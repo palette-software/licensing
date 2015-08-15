@@ -27,7 +27,9 @@ def redirect_verify(fname, lname, email):
     register_url = System.get_by_key('REGISTER-VERIFY-URL')
     redirect_url = '{0}?value={1}'.format(register_url,
                                           urllib.quote(email.base))
-    email_data = {'firstname':fname, 'lastname':lname, 'url':redirect_url}
+    email_data = {'firstname': fname.title(),
+                  'lastname': lname.title(),
+                  'url':redirect_url}
     SendwithusAPI.send_message('SENDWITHUS-REGISTERED-UNVERIFIED-ID',
                                'hello@palette-software.com',
                                email.full, email_data)
@@ -84,13 +86,17 @@ class VerifyApplication(BaseApp):
             SlackAPI.error('Unverified email not found: ' + value)
             raise exc.HTTPNotFound()
 
+        contact_id = contact['Id']
+
         verified = contact[SalesforceAPI.CONTACT_VERFIED]
         if verified:
             SlackAPI.warning('Contact already verfied: ' + email)
         else:
             data = {SalesforceAPI.CONTACT_VERFIED: True}
-            sf.Contact.update(contact['Id'], data)
-            SlackAPI.info('*Contact Verified* ' + email)
+            sf.Contact.update(contact_id, data)
+
+            url = "https://" + SalesforceAPI.get_url() + '/' + contact_id
+            SlackAPI.info('*Contact Verified* ' + email + " : " + url)
 
         base_email = contact[SalesforceAPI.CONTACT_EMAIL_BASE]
         data = {'fname': contact['FirstName'],

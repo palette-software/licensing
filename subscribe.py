@@ -19,6 +19,7 @@ from plan import Plan
 from stage import Stage
 from system import System
 
+from contact import Email
 from utils import to_localtime, dict_to_qs, redirect_to_sqs
 
 logger = logging.getLogger('licensing')
@@ -55,9 +56,12 @@ def build_contact(req):
     """Take the request data and translate the fields so that the resulting
     data is suitable for a Salesforce contact insert or update."""
     data = {}
-    data['Email'] = req.params['email']
-    data['FirstName'] = req.params['fname']
-    data['LastName'] = req.params['lname']
+    email = Email(req.params['email'])
+    data['Email'] = email.full
+    data[SalesforceAPI.CONTACT_EMAIL_BASE] = email.base
+
+    data['FirstName'] = req.params['fname'].title()
+    data['LastName'] = req.params['lname'].title()
     data['Title'] = req.params['Title']
     data['Department'] = req.params['Department']
 
@@ -66,12 +70,13 @@ def build_contact(req):
     altphone = sqs_phone(req, 'Alt-Phone')
     if altphone:
         data['OtherPhone'] = altphone
+
     return data
 
 def build_opportunity(entry):
     """Extract opportunity data from a licensing entry."""
     # FIXME: merge with SalesforceAPI.update_opportunity()
-    data = {'Palette_Domain_ID__c':entry.id,
+    data = {'Palette_Domain_ID__c':str(entry.id),
             'StageName':Stage.get_by_id(entry.stageid).name,
             'CloseDate':entry.expiration_time.isoformat(),
             'Expiration_Date__c':entry.expiration_time.isoformat(),
@@ -178,6 +183,8 @@ class SubscribeApplication(BaseApp):
             sf_url = 'UNKNOWN'
         if entry.expiration_time < datetime.utcnow():
             is_expired = "*[EXPIRED]*"
+        else:
+            is_expired = ""
 
         SlackAPI.notify('*Subscribe Browse Event:* '
                 'Key: {0}, Opportunity: {1}, Name: {2} ({3}), '

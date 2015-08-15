@@ -127,13 +127,12 @@ def generate_license(sf, contact, product,
                               'support@palette-software.com',
                               email_data)
 
-    sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
     expiration_time = to_localtime(entry.expiration_time).strftime("%x")
     if slack:
-        SlackAPI.info('*{0}* Opportunity: '
-                      '{1} ({2}) - Type: {3} {4} Expiration {5}'.format(
-                          stage.name, opportunity_name, contact['Email'],
-                          product.name, sf_url, expiration_time))
+        msg = '*{0}* {1} *{2}* : {3}, Expires at {4}'.\
+              format(stage.name, product.name,
+                     entry.name, entry.key, expiration_time)
+        SlackAPI.info(msg)
 
     return entry
 

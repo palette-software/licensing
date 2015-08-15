@@ -3,7 +3,7 @@ import logging
 from stage import Stage
 from system import System
 from utils import get_netloc, domain_only
-from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
+from simple_salesforce import Salesforce #, SalesforceAuthenticationFailed
 
 from contact import Email
 from product import Product
@@ -30,22 +30,6 @@ class SalesforceAPI(object):
 
     CONTACT_VERFIED = CONTACT_VERIFIED
     CONTACT_EMAIL_BASE = CONTACT_EMAIL_BASE
-
-    @classmethod
-    def _get_connection(cls):
-        try:
-            username = System.get_by_key('SALESFORCE-USERNAME')
-            password = System.get_by_key('SALESFORCE-PASSWORD')
-            security_token = System.get_by_key('SALESFORCE-TOKEN')
-            salesforce = Salesforce(
-                username=username,
-                password=password,
-                security_token=security_token)
-            return salesforce
-        except SalesforceAuthenticationFailed as ex:
-            logger.error('Error Logging into Salesforce %s %s %s: %s',
-                        username, password, security_token, str(ex))
-            return None
 
     @classmethod
     def connect(cls):
@@ -126,6 +110,7 @@ class SalesforceAPI(object):
         """Create a new contact (that definitely doesn't exist) and optionally
         create the associated account.  Returns the contact_id."""
         # pylint: disable=too-many-arguments
+        # pylint: disable=too-many-locals
         if not isinstance(email, Email):
             email = Email(email)
 
@@ -137,7 +122,11 @@ class SalesforceAPI(object):
             account = conn.Account.create({'Name': website,
                                            'Website': website})
             account_id = account['id']
-            info("*New Account*: '" + website + "'", slack=slack)
+            url = "https://" + cls.get_url() + '/' + account_id
+            info("*New Account* " + website + " : " + url, slack=slack)
+
+        fname = fname.title()
+        lname = lname.title()
 
         data = {'AccountId': account_id,
                 'Firstname': fname,
@@ -148,10 +137,20 @@ class SalesforceAPI(object):
         }
         contact = conn.Contact.create(data)
 
-        contact_name = '{0} {1} <{2}>'.format(fname, lname, email.base)
-        info("*New Contact* (unverified): '" + contact_name + "'", slack=slack)
+        # NOTE lowercase 'id' on create() response
+        contact_id = contact['id']
 
-        return contact['id'] # NOTE lowercase 'id' on create() response
+        contact_name = '{0} {1} <{2}>'.format(fname, lname, email.base)
+        if verified:
+            vstr = ''
+        else:
+            vstr = ' (unverified)'
+        url = "https://" + cls.get_url() + '/' + contact_id
+
+        msg = "*New Contact *{0} {1} : {2}".format(vstr, contact_name, url)
+        info(msg, slack=slack)
+
+        return contact_id
 
     @classmethod
     def upsert_contact(cls, conn, account_id, data):
@@ -235,14 +234,17 @@ class SalesforceAPI(object):
                'Secret_Access_Key__c': entry.secret_key,
                'Amount':entry.amount} # FIXME: is this valid?
         if not entry.id is None:
-            row['Palette_Domain_ID__c'] = entry.id,
+            row['Palette_Domain_ID__c'] = str(entry.id)
         if entry.subdomain:
-            row['Palette_Cloud_subdomain__c'] = entry.subdomain,
+            row['Palette_Cloud_subdomain__c'] = entry.subdomain
         if entry.productid is not None:
             row['Palette_Plan__c'] = Product.get_by_id(entry.productid).name
         opp = conn.Opportunity.create(row)
-        info("*New Opportunity* " + name, slack=slack)
-        return opp['id']
+        opp_id = opp['id']
+
+        url = "https://" + cls.get_url() + '/' + opp_id
+        info("*New Opportunity* " + name + " : " + url, slack=slack)
+        return opp_id
 
     @classmethod
     def update_opportunity(cls, conn, data):
@@ -255,7 +257,7 @@ class SalesforceAPI(object):
                         data.key, Stage.get_by_id(data.stageid).name)
 
             oppid = opp['records'][0]['Id']
-            row = {'Palette_Domain_ID__c':data.id,
+            row = {'Palette_Domain_ID__c':str(data.id),
                     'StageName':Stage.get_by_id(data.stageid).name,
                     'CloseDate':data.expiration_time.isoformat(),
                     'Expiration_Date__c':data.expiration_time.isoformat(),
