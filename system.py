@@ -92,6 +92,8 @@ class System(Base, BaseMixin):
      'value':'http://www.palette-software.com/subscribe-thank-you'},
     {'key':'VERIFY-REDIRECT-URL',
      'value':'http://www.palette-software.com/start-trial'},
+    {'key':'LICENSING-UNREACHABLE-URL',
+     'value':'http://www.palette-software.com/licensing-unreachable'},
     {'key':'PALETTE-PRO-PLAN',
      'value':'MONTHLY'},
     {'key':'PALETTE-ENT-NAMED-USER-PLAN',

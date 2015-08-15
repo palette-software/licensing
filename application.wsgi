@@ -22,6 +22,7 @@ from subscribe import SubscribeApplication
 from trial import TrialRequestApplication, TrialStartApplication
 
 from salesforce_api import SalesforceAPI
+from slack_api import SlackAPI
 
 # pylint: disable=unused-import
 from stage import Stage
@@ -63,12 +64,34 @@ class ExpiredApplication(BaseApp):
         raise exc.HTTPTemporaryRedirect(location=self.base_url)
 
 
+class UnreachableApplication(BaseApp):
+    """The user's browser is sent to this URI when their server can't contact
+    licensing for an extended period of time.  The hope is that the user will
+    be able to talk to licensing even if their server can't."""
+
+    @required_parameters('key', allowed_methods=['GET'])
+    def service_GET(self, req):
+        key = req.params['key']
+
+        location = System.get_by_key('LICENSING-UNREACHABLE-URL')
+
+        entry = License.get_by_key(key)
+        if not entry:
+            SlackAPI.warn("(unreachable) key not found: " + key)
+            raise exc.HTTPTemporaryRedirect(location=location)
+
+        # FIXME: prevent multiple Slack messages...
+        SlackAPI.error("'{0}' cannot reach licensing.".format(entry.name))
+        raise exc.HTTPTemporaryRedirect(location=location)
+
+
 class HelloApplication(BaseApp):
 
     def service_GET(self, req):
         # pylint: disable=unused-argument
         # This could be tracked :).
         return str(datetime.now())
+
 
 def update_add(update, sfkey, opportunity, param, data):
     """Builds a Saleforce Opportunity update."""
@@ -201,6 +224,11 @@ router.add_route(r'/api/trial\Z', TrialRequestApplication())
 # called when the initial setup page is completed.
 router.add_route(r'/api/trial-start\Z', TrialStartApplication())
 router.add_redirect(r'/\Z', 'http://www.palette-software.com')
+# redirect the user's browser to an information page whenever the server
+# hasn't been able to contact licensing for a long time...
+unreachable = UnreachableApplication()
+router.add_route(r'/unreachable\Z|/licensing-unreachable\Z', unreachable)
+router.add_route(r'/licensing-unavailable\Z', unreachable) # old name
 
 application = SessionMiddleware(app=router)
 

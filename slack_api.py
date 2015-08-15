@@ -32,6 +32,7 @@ class SlackAPI(object):
     def warning(cls, message):
         logger.warning(message)
         cls.notify("*[WARNING]* " + message)
+    warn = warning # alias
 
     @classmethod
     def error(cls, message):

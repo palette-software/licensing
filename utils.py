@@ -122,6 +122,6 @@ def translate_values(source, entry, fields):
             setattr(entry, dest_attr, value)
 
 def redirect_to_sqs(url):
-    """Redirect a requestion to Squarespace."""
+    """Redirect a request to Squarespace. (mostly for POST requests)"""
     # use 302 here so that the browser redirects with a GET request.
     return exc.HTTPFound(location=url)
