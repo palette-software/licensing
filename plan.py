@@ -29,13 +29,16 @@ class Plan(object):
             plan.quantity = 1
         elif entry.productid == Product.get_by_key('PALETTE-ENT').id:
             # return palette enterprise cost which depends on license type
+            plan.quantity = entry.n
             if entry.type == 'Named-user':
                 if not plan.name:
                     plan.name = System.get_by_key('PALETTE-ENT-NAMED-USER-PLAN')
+                # if a user has less than 10 licenses, still charge for 10.
+                if plan.quantity < 10:
+                    plan.quantity = 10
             elif entry.type == 'Core':
                 if not plan.name:
                     plan.name = System.get_by_key('PALETTE-ENT-CORE-PLAN')
-            plan.quantity = entry.n
 
         if not plan.name:
             return None
