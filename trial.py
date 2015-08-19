@@ -247,7 +247,7 @@ class TrialStartApplication(BaseApp):
             sf_url = '{0}/{1}'.format(SalesforceAPI.get_url(), opp_id)
             SlackAPI.notify('*{0}* '
                             'Key: {1}, Name: {2} ({3}), Type: {4} {5} '\
-                            'Expiration {7}' \
+                            'Expiration {6}' \
                     .format(entry.stage.name, entry.key, entry.name,
                             entry.email, entry.product.name, sf_url,
                             to_localtime(entry.expiration_time).strftime("%x")))
