@@ -102,6 +102,12 @@ def update_add(update, sfkey, opportunity, param, data):
             return True
     return False
 
+def get_license_quantity(req):
+    # FIXME
+    if 'license-core-licenses' in req.params:
+        return req.params_getint('license-core-licenses')
+    return req.params_getint('license-quantity')
+
 class LicenseApplication(BaseApp):
     """This application responds to the controller 'license verify'"""
 
@@ -117,27 +123,31 @@ class LicenseApplication(BaseApp):
         update = {}
 
         system_id = req.params['system-id']
-        if entry.system_id and entry.system_id != system_id:
-            logger.error('System id from request {1} doesn\'t match DB {2}'\
-                         .format(key, system_id, entry.system_id))
+        if entry.system_id != system_id:
+            if entry.system_id:
+                logger.error('%s: System id from {1} != DB {2}',
+                             key, system_id, entry.system_id)
             entry.system_id = system_id
             update['System_ID__c'] = system_id
 
         license_type = req.params['license-type']
-        if entry.type and entry.type != license_type:
-            logger.error('License type from request {1} doesn\'t match DB {2}'\
-                         .format(key, license_type, entry.type))
+        if entry.type != license_type:
+            if entry.type:
+                logger.error('%s: License type %s != DB %s',
+                             key, license_type, entry.type)
             entry.type = license_type
             update['Tableau_App_License_Type__c'] = license_type
 
-        license_quantity = req.params_getint('license-quantity', default=0)
-        if entry.n and entry.n != license_quantity:
-            logger.error('License quantity {1} doesn\'t match DB {2}'\
-                         .format(key, license_quantity, entry.n))
-            entry.n = license_quantity
-            update['Tableau_App_License_Count__c'] = license_quantity
-
-        logger.info('Updating license information for %s', key)
+        license_quantity = get_license_quantity(req)
+        if not license_quantity is None:
+            if entry.n != license_quantity:
+                if entry.n:
+                    logger.error('%s: License quantity %s != DB %s',
+                                 key, license_quantity, entry.n)
+                entry.n = license_quantity
+                update['Tableau_App_License_Count__c'] = license_quantity
+        else:
+            SlackAPI.error('%s: Invalid license quantity', key)
 
         entry.contact_time = datetime.utcnow()
         session = get_session()
@@ -179,10 +189,12 @@ class LicenseApplication(BaseApp):
                    'Tableau_App_Bit__c', opportunity,
                    'tableau-bitness', req.params)
 
-        if 'agent-info' in req.params:
-            logger.info('%s: %s', key, str(req.params['agent-info']))
+        #if 'agent-info' in req.params:
+        #    logger.info('%s: %s', key, str(req.params['agent-info']))
 
         if update:
+            logger.info('Updating license information for %s : %s',
+                        key, str(update))
             sf.Opportunity.update(opportunity['Id'], update)
 
         return data
