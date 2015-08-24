@@ -147,7 +147,7 @@ class LicenseApplication(BaseApp):
                 entry.n = license_quantity
                 update['Tableau_App_License_Count__c'] = license_quantity
         else:
-            SlackAPI.error('%s: Invalid license quantity', key)
+            SlackAPI.error(key + ': Invalid license quantity')
 
         entry.contact_time = datetime.utcnow()
         session = get_session()
