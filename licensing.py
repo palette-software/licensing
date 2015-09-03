@@ -63,6 +63,7 @@ class License(Base):
     email = Column(String, nullable=False) # FIXME: unique
 
     # FIXME: move to Salesforce
+    #  if 'Organization Website' is remove from /subscribe in SQS.
     website = Column(String)
 
     # AWS, VMWare or Palette Pro
@@ -76,7 +77,7 @@ class License(Base):
     instance_id = Column(String)
 
     salesforceid = Column(String)
-    amount = Column(Numeric) # FIXME: move to billing?
+    amount = Column(Numeric) # FIXME: is this needed in licensing?
     plan = Column(String) # Plan name - if NULL use default
 
     # Stripe customer record
@@ -91,13 +92,12 @@ class License(Base):
     # Is this an active record?
     active = Column(Boolean, nullable=False, default=True)
 
-    creation_time = Column(DateTime, server_default=func.now())
-    last_update = Column(DateTime, default=datetime.utcnow(),
-                                    onupdate=datetime.utcnow())
+    creation_time = Column(DateTime, default=func.now(), nullable=False)
+    last_update = Column(DateTime, default=func.now(),
+                         onupdate=func.now(), nullable=False)
 
     stage = relationship('Stage')
     product = relationship('Product')
-    #billing = relationship('Billing', uselist=False, lazy='joined')
 
     # FIXME: rename
     def istrial(self):

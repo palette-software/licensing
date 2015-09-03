@@ -30,7 +30,6 @@ from licensing import License
 from support import Support
 from system import System
 from product import Product
-from server_info import ServerInfo
 
 # currently is set to 'trust' for the loopback interface so use the old pw.
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'

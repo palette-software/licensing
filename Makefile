@@ -19,7 +19,6 @@ FILES := application.wsgi \
 	stage.py \
 	plan.py \
         product.py \
-        server_info.py \
 	register.py \
 	subscribe.py \
 	system.py \

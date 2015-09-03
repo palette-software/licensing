@@ -15,7 +15,6 @@ from support import Support
 from stage import Stage
 from product import Product
 from system import System
-from server_info import ServerInfo
 # pylint: enable=unused-import
 
 DATABASE='postgresql://palette:palpass@localhost/licensedb'
