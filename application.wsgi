@@ -190,8 +190,8 @@ class LicenseApplication(BaseApp):
                    'Tableau_App_Bit__c', opportunity,
                    'tableau-bitness', req.params)
 
-        #if 'agent-info' in req.params:
-        #    logger.info('%s: %s', key, str(req.params['agent-info']))
+        # Enable full POST logging for now
+        logger.info('%s[%s]: %s', entry.name, key, str(req.params))
 
         if update:
             logger.info('Updating license information for %s : %s',
