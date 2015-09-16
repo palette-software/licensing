@@ -154,6 +154,9 @@ class LicenseApplication(BaseApp):
         session = get_session()
         session.commit()
 
+        # Enable full POST logging for now
+        logger.info('%s[%s]: %s', entry.name, key, str(req.params))
+
         data = {'id': entry.id,
                 'trial': entry.istrial(),
                 'stage': Stage.get_by_id(entry.stageid).name,
@@ -189,9 +192,6 @@ class LicenseApplication(BaseApp):
         update_add(update,
                    'Tableau_App_Bit__c', opportunity,
                    'tableau-bitness', req.params)
-
-        # Enable full POST logging for now
-        logger.info('%s[%s]: %s', entry.name, key, str(req.params))
 
         if update:
             logger.info('Updating license information for %s : %s',
