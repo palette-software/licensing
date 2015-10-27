@@ -124,7 +124,7 @@ class LicenseApplication(BaseApp):
         system_id = req.params['system-id']
         if entry.system_id != system_id:
             if entry.system_id:
-                logger.error('%s: System id from {1} != DB {2}',
+                logger.error('%s: System id from %s != DB %s',
                              key, system_id, entry.system_id)
             entry.system_id = system_id
             update['System_ID__c'] = system_id
