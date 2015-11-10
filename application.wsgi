@@ -105,13 +105,14 @@ def get_license_quantity(req):
     # FIXME
     if 'license-core-licenses' in req.params:
         return req.params_getint('license-core-licenses')
+    if not 'license-quantity' in req.params:
+        return None
     return req.params_getint('license-quantity')
 
 class LicenseApplication(BaseApp):
     """This application responds to the controller 'license verify'"""
 
-    @required_parameters('system-id', 'license-key',
-                         'license-type', 'license-quantity')
+    @required_parameters('system-id', 'license-key')
     def service_POST(self, req):
         key = req.params['license-key']
         entry = License.get_by_key(key)
@@ -129,13 +130,14 @@ class LicenseApplication(BaseApp):
             entry.system_id = system_id
             update['System_ID__c'] = system_id
 
-        license_type = req.params['license-type']
-        if entry.type != license_type:
-            if entry.type:
-                logger.error('%s: License type %s != DB %s',
-                             key, license_type, entry.type)
-            entry.type = license_type
-            update['Tableau_App_License_Type__c'] = license_type
+        if 'license-type' in req.params:
+            license_type = req.params['license-type']
+            if entry.type != license_type:
+                if entry.type:
+                    logger.error('%s: License type %s != DB %s',
+                                 key, license_type, entry.type)
+                    entry.type = license_type
+                    update['Tableau_App_License_Type__c'] = license_type
 
         license_quantity = get_license_quantity(req)
         if not license_quantity is None:
