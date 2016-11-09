@@ -1,15 +1,29 @@
 FROM ubuntu:14.04
 RUN apt-get update
-#RUN apt-get install -y apt-transport-https
+RUN apt-get install -y apt-transport-https
 
-RUN sudo apt-get install -y postgresql python-psycopg2 python-dateutil python-pip
+RUN apt-get install -y man
+RUN apt-get install -y vim
+RUN apt-get install -y python python-webob python-paste python-pastedeploy python-pastescript python-tz python-apt
+RUN apt-get install -y python-sqlalchemy
+
+RUN sudo apt-get install -y postgresql 
+RUN sudo apt-get install -y python-psycopg2
+RUN sudo apt-get install -y python-dateutil
+RUN sudo apt-get install -y python-pip
 RUN sudo addgroup wheel
 ADD sudoers /etc/sudoers
 RUN sudo useradd -p palette -ms /bin/bash palette
 RUN sudo usermod -aG sudo palette
 RUN sudo usermod -aG wheel palette
-ADD .bashrc /home/root
-# RUN sudo service postgresql start
-# RUN sudo -u postgres createuser --superuser palette
-# #RUN sudo -u postgres createuser --superuser $USER
-# RUN sudo -u postgres createdb licensedb
+
+USER palette
+WORKDIR /home/palette/
+ADD install.sh /home/palette/
+Add akiri.framework_0.5.6_all.deb /home/palette/
+
+RUN sudo pip install webob
+RUN sudo dpkg -i akiri.framework_0.5.6_all.deb
+# RUN apt-get install -y curl
+EXPOSE 443
+

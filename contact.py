@@ -3,9 +3,6 @@ from __future__ import absolute_import
 import os
 import binascii
 
-def generate_token():
-    binascii.hexlify(os.urandom(16))
-
 class Email(object):
     """Generic email class for handling emails with plus(+) or period(.)"""
 

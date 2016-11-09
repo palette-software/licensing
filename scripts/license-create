@@ -10,9 +10,6 @@ from akiri.framework.sqlalchemy import create_engine
 
 from contact import Email
 from product import Product
-from ansible_api import AnsibleAPI
-from salesforce_api import SalesforceAPI
-
 from trial import generate_license
 
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
@@ -91,23 +88,17 @@ if __name__ == '__main__':
         stage = 'STAGE-TRIAL-REQUESTED'
 
     # FIXME: create if needed.
-    sf = SalesforceAPI.connect()
-    contact = SalesforceAPI.get_contact_by_email(sf, email.base)
-    if contact is None:
-        contact_id = SalesforceAPI.create_contact(sf, fname, lname, email,
-                                                  slack=args.slack)
-        contact = sf.Contact.get(contact_id)
 
     product = Product.get_by_key(args.product)
+    contact = {}
+    contact['Email'] = email.base
+    contact['Name'] = fname + ' ' + lname
+    contact['FirstName'] = fname
+    contact['LastName'] = lname
 
-    entry = generate_license(sf, contact, product, name=args.name,
+    entry = generate_license(contact, product, name=args.name,
                              stage_key=stage, expiration=expiration,
                              send_email=args.send_email,
                              slack=args.slack)
-
-    if args.product == 'PALETTE-PRO' and args.launch:
-        AnsibleAPI.launch_instance(entry, contact,
-                                  'PALETTECLOUD-LAUNCH-SUCCESS-ID',
-                                  'PALETTECLOUD-LAUNCH-FAIL-ID')
 
     sys.exit(0)
