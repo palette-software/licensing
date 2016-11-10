@@ -32,7 +32,6 @@ class UnreachableApplication(BaseApp):
 
     @required_parameters('key', allowed_methods=['GET'])
     def service_GET(self, req):
-        print "Unreacheable handler"
         key = req.params['key']
 
         location = System.get_by_key('LICENSING-UNREACHABLE-URL')
@@ -68,7 +67,6 @@ class LicenseApplication(BaseApp):
 
     @required_parameters('system-id', 'license-key')
     def service_POST(self, req):
-	print "Service POST"
         key = req.params['license-key']
         entry = License.get_by_key(key)
         if entry is None:
@@ -136,7 +134,6 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 router = Router()
-#### LIVE URLS
 # used to test connectivity by the VM - particularly in the setup page.
 router.add_route(r'/hello\Z', HelloApplication())
 # license verify from the conductor
