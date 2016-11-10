@@ -1,25 +1,23 @@
 import requests
 import logging
+import json
 
 from system import System
 from utils import str2bool
 
 logger = logging.getLogger('licensing')
 
-URL = 'https://palette.slack.com/services/hooks/slackbot'
-
-# Slackbot Remote Control
-# This token is tied to the account 'matt@palette-software.com'.
-TOKEN = 'UGbMIqQeuW8FhraxvckabwL1'
-
 class SlackAPI(object):
+    URL = None
 
     @classmethod
     def notify(cls, message):
-        if str2bool(System.get_by_key('SEND-SLACK')):
-            channel = System.get_by_key('SLACK-CHANNEL')
-            url = URL + '?token=' + TOKEN + '&channel=%23' + channel
-            requests.post(url, data=message)
+        print "url: ", cls.URL
+        if str2bool(System.get_by_key('SEND-SLACK')) and not cls.URL is None:
+            payload = {}
+            payload["text"] = message;
+            data={ "payload": json.dumps(payload)}
+            r = requests.post(cls.URL, data)
         else:
             logger.info('Not sending slack message')
 
@@ -39,3 +37,7 @@ class SlackAPI(object):
         logger.error(message)
         cls.notify("*[ERROR]* " + message)
 
+
+    @classmethod
+    def URL(url):
+        cls.URL = url

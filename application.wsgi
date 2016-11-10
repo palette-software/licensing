@@ -70,7 +70,7 @@ class LicenseApplication(BaseApp):
         key = req.params['license-key']
         entry = License.get_by_key(key)
         if entry is None:
-            logger.error('Invalid license key: ' + key)
+            SlackAPI.error('Invalid license key: ' + key + ' (' + req.remote_addr + ')' )
             raise exc.HTTPNotFound()
 
         update = {}
@@ -157,7 +157,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=8080)
     parser.add_argument('--pem', '--ssl-pem', default=None)
+    parser.add_argument('--slack')
     args = parser.parse_args()
+
+    SlackAPI.URL = args.slack
 
     application = TransLogger(application)
 
