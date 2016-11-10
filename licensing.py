@@ -32,9 +32,6 @@ class License(Base):
     # The tableau license count
     n = Column(Integer)
 
-    # Autogenrated unique system GUID of the Palette Server
-    system_id = Column(String)
-
     # Stage in try/buy workflow
     stageid = Column(Integer, ForeignKey("stage.id"))
 

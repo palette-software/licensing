@@ -65,7 +65,7 @@ def get_license_quantity(req):
 class LicenseApplication(BaseApp):
     """This application responds to the controller 'license verify'"""
 
-    @required_parameters('system-id', 'license-key')
+    @required_parameters('license-key')
     def service_POST(self, req):
         key = req.params['license-key']
         entry = License.get_by_key(key)
@@ -74,14 +74,6 @@ class LicenseApplication(BaseApp):
             raise exc.HTTPNotFound()
 
         update = {}
-
-        system_id = req.params['system-id']
-        if entry.system_id != system_id:
-            if entry.system_id:
-                logger.error('%s: System id from %s != DB %s',
-                             key, system_id, entry.system_id)
-            entry.system_id = system_id
-            update['System_ID__c'] = system_id
 
         if 'license-type' in req.params:
             license_type = req.params['license-type']

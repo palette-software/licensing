@@ -160,7 +160,7 @@ class TrialStartApplication(BaseApp):
     initial setup page.
     The POST request comes from Palette Server (not the website)
     """
-    @required_parameters('system-id', 'license-key')
+    @required_parameters('license-key')
     def service_POST(self, req):
         """ Handle a Trial start
         """
@@ -169,13 +169,6 @@ class TrialStartApplication(BaseApp):
         if entry is None:
             logger.error('Invalid trial start key: ' + key)
             raise exc.HTTPNotFound()
-
-        system_id = req.params['system-id']
-        if entry.system_id and entry.system_id != system_id:
-            logger.error('Invalid trial start request for key {0}.'
-                         'System id from request {1} doesnt match DB {2}'\
-                   .format(key, system_id, entry.system_id))
-        entry.system_id = system_id
 
         # FIXME
         session = get_session()
