@@ -107,6 +107,7 @@ class LicenseApplication(BaseApp):
         data = {'id': entry.id,
                 'trial': entry.istrial(),
                 'stage': Stage.get_by_id(entry.stageid).name,
+                'name': entry.name,
                 'expiration-time': str(entry.expiration_time)}
 
         return data

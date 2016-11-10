@@ -211,4 +211,5 @@ class TrialStartApplication(BaseApp):
         return {'id': entry.id,
                 'trial': entry.istrial(),
                 'stage': entry.stage.name,
+                'name': entry.name,
                 'expiration-time': str(entry.expiration_time)}
