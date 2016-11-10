@@ -20,6 +20,7 @@ USER palette
 WORKDIR /home/palette/
 ADD install.sh /home/palette/
 Add akiri.framework_0.5.6_all.deb /home/palette/
+ADD init_db.sql /home/palette/
 
 RUN sudo pip install webob
 RUN sudo dpkg -i akiri.framework_0.5.6_all.deb
