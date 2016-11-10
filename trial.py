@@ -24,7 +24,7 @@ PALETTE_ENT = 'Palette Enterprise'
 logger = logging.getLogger('licensing')
 
 # FIXME: locking + database transaction so that add() doesn't blow up...
-def unique_name(name):
+def unique_name(name, product=None):
     """ Lookup and get a unique name for the server based on
         what is already in the database
         The algorithm comes up with names in this format:
@@ -34,12 +34,14 @@ def unique_name(name):
     to_try = name
 
     while True:
-        result = License.get_by_name(to_try)
+        result = License.get_first_by_name(to_try, product)
         if result is not None:
+            print "Result is not None"
             # name exists try the next numbered one$
             to_try = '{0}-{1}'.format(name, count)
             count = count + 1
         else:
+            print "Result is None"
             break
 
     return to_try
@@ -68,7 +70,7 @@ def generate_license(contact, product,
     org = get_netloc(domain_only(email)).lower()
 
     if name is None:
-        name = unique_name(hostname_only(org))
+        name = unique_name(hostname_only(org), product)
     if stage_key is None:
         stage_key = 'STAGE-TRIAL-REQUESTED'
     stage = Stage.get_by_key(stage_key)
@@ -84,7 +86,7 @@ def generate_license(contact, product,
     entry.stageid = stage.id
 
     entry.registration_start_time = datetime.utcnow()
-    entry.productid = Product.get_by_key(Product.PRO_KEY).id
+    entry.productid = product.id
 
     # FIXME
     session = get_session()

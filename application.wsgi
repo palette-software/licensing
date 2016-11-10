@@ -21,6 +21,7 @@ from slack_api import SlackAPI
 from stage import Stage
 from licensing import License
 from system import System
+from product import Product
 
 # currently is set to 'trust' for the loopback interface so use the old pw.
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
@@ -68,12 +69,23 @@ class LicenseApplication(BaseApp):
     @required_parameters('license-key')
     def service_POST(self, req):
         key = req.params['license-key']
-        entry = License.get_by_key(key)
+        product = None
+        product_key = ""
+        if 'product' in req.params:
+            product_key = req.params['product']
+            product = Product.get_by_key(product_key)
+
+        entry = License.get_by_key(key, product)
         if entry is None:
-            SlackAPI.error('Invalid license key: ' + key + ' (' + req.remote_addr + ')' )
+            SlackAPI.error('Invalid license key for (' + product_key + '): ' + key + ' (' + req.remote_addr + ')' )
             raise exc.HTTPNotFound()
 
         update = {}
+
+        if product is not None and product.key != entry.product.key:
+            SlackAPI.error('Invalid license key for (' + product_key + '): ' + key + ' (' + req.remote_addr + ')' )
+            raise exc.HTTPNotFound()
+
 
         if 'license-type' in req.params:
             license_type = req.params['license-type']

@@ -54,7 +54,7 @@ if __name__ == '__main__':
     parser.add_argument('--product',
         help='Sets the Product',
         required=False, default=Product.PRO_KEY,
-        choices=[Product.PRO_KEY, Product.ENT_KEY])
+        choices=[Product.PRO_KEY, Product.ENT_KEY, Product.INS_KEY])
     parser.add_argument('--send_email',
         help='Send an email to the user. '
              'If not specified no email will be sent',

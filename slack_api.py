@@ -12,7 +12,6 @@ class SlackAPI(object):
 
     @classmethod
     def notify(cls, message):
-        print "url: ", cls.URL
         if str2bool(System.get_by_key('SEND-SLACK')) and not cls.URL is None:
             payload = {}
             payload["text"] = message;

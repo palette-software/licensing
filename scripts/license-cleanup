@@ -26,7 +26,7 @@ def cleanup(**kwargs):
         what is already in the database
     """
     name = kwargs['name']
-    result = License.get_by_name(name)
+    result = License.get_first_by_name(name)
     if result is None:
         print 'License entry \'{0}\' not found'.format(name)
         return 1
