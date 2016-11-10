@@ -26,7 +26,6 @@ def main():
     Stage.populate()
     Product.populate()
     System.populate()
-    ServerInfo.populate()
 
 if __name__ == '__main__':
     main()

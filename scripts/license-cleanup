@@ -8,37 +8,9 @@ sys.path.append('/opt/palette')
 from akiri.framework.sqlalchemy import create_engine, get_session
 
 from licensing import License
-from salesforce_api import SalesforceAPI
 from slack_api import SlackAPI
-from boto_api import BotoAPI
 
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
-
-def delete_from_aws(entry):
-    """ Terminates an instance, delete an IAM user and
-        delete the s3 bucket"""
-
-    print 'Terminating instance \'{0}\''.format(entry.name)
-
-    BotoAPI.terminate_instance(entry.name, entry.aws_zone)
-
-    BotoAPI.delete_user(entry.name)
-
-    BotoAPI.delete_bucket(entry.name, entry.aws_zone)
-
-def delete_from_sf(entry):
-    """ Deletes a Salesforce Opportunity, and optionally
-        the SF account and/or contact"""
-
-    # SalesforceAPI.delete_contact(entry)
-    # SalesforceAPI.delete_account(entry)
-
-    sf = SalesforceAPI.connect()
-
-    opportunity = SalesforceAPI.get_opportunity_by_key(sf, entry.key)
-    if opportunity:
-        print "Deleting Opportunity '{0}'".format(opportunity['Name'])
-        sf.Opportunity.delete(opportunity['Id'])
 
 def delete_from_db(entry):
     """ Deletes the record from the licensing DB
@@ -60,11 +32,6 @@ def cleanup(**kwargs):
         return 1
 
     print 'Cleaning up entry \'{0}\''.format(name)
-    if not kwargs.get('no_aws'):
-        delete_from_aws(result)
-
-    if not kwargs.get('no_sf'):
-        delete_from_sf(result)
 
     # save info before deleting
     email = result.email

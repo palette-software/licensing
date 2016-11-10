@@ -2,10 +2,6 @@
 import sys
 sys.path.append('/opt/palette')
 
-import stripe
-# stripe.api_key = 'sk_test_ynEoVFrJuhuZ2cVmhCu0ePU4'
-stripe.api_key = 'sk_live_VQnPZ5WlUY0hgbYv5KsGUM80'
-
 from datetime import datetime
 from webob import exc
 import urllib
@@ -17,51 +13,17 @@ from akiri.framework.sqlalchemy import create_engine, get_session
 from akiri.framework.util import required_parameters
 
 from application import BaseApp
-from register import RegisterApplication, VerifyApplication
-from subscribe import SubscribeApplication
 from trial import TrialRequestApplication, TrialStartApplication
 
-from salesforce_api import SalesforceAPI
 from slack_api import SlackAPI
 
 # pylint: disable=unused-import
 from stage import Stage
 from licensing import License
-from support import Support
 from system import System
-from product import Product
 
 # currently is set to 'trust' for the loopback interface so use the old pw.
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
-
-class SupportApplication(BaseApp):
-
-    def service_GET(self, req):
-        if 'key' not in req.params:
-            # Return 404 instead of bad request to 'hide' this URL.
-            return exc.HTTPNotFound()
-        entry = License.get_by_key(req.params['key'])
-        if entry is None:
-            raise exc.HTTPNotFound()
-        session = get_session()
-        entry.support_contact_time = datetime.utcnow()
-        session.commit()
-        if not entry.support or not entry.support.active:
-            raise exc.HTTPNotFound()
-        return {'port': entry.support.port}
-
-
-class ExpiredApplication(BaseApp):
-
-    def __init__(self, base_url):
-        super(ExpiredApplication, self).__init__()
-        self.base_url = base_url
-
-    def service_GET(self, req):
-        # pylint: disable=unused-argument
-        # FIXME: take 'key' and resolve.
-        raise exc.HTTPTemporaryRedirect(location=self.base_url)
-
 
 class UnreachableApplication(BaseApp):
     """The user's browser is sent to this URI when their server can't contact
@@ -91,15 +53,6 @@ class HelloApplication(BaseApp):
         # This could be tracked :).
         return str(datetime.now())
 
-
-def update_add(update, sfkey, opportunity, param, data):
-    """Builds a Saleforce Opportunity update."""
-    if param in data:
-        value = data[param]
-        if opportunity[sfkey] != value:
-            update[sfkey] = value
-            return True
-    return False
 
 def get_license_quantity(req):
     # FIXME
@@ -164,44 +117,7 @@ class LicenseApplication(BaseApp):
                 'stage': Stage.get_by_id(entry.stageid).name,
                 'expiration-time': str(entry.expiration_time)}
 
-        sf = SalesforceAPI.connect()
-        opportunity = SalesforceAPI.get_opportunity_by_key(sf, key)
-        if opportunity is None:
-            logger.error("No opportunity for %s : %s", entry.name, key)
-            return data
-
-        update_add(update,
-                   'Palette_Version__c', opportunity, 
-                   'palette-version', req.params)
-        update_add(update,
-                   'Tableau_App_Version__c', opportunity, 
-                   'tableau-version', req.params)
-        update_add(update,
-                   'Primary_UUID__c', opportunity,
-                   'primary-uuid', req.params)
-        update_add(update,
-                   'Tableau_OS_Bit__c', opportunity,
-                   'processor-bitness', req.params)
-        update_add(update,
-                   'Processor_Type__c', opportunity,
-                   'processor-type', req.params)
-        update_add(update,
-                   'Processor_Count__c', opportunity,
-                   'processor-count', req.params)
-        update_add(update,
-                   'Tableau_OS_Version__c', opportunity,
-                   'primary-os-version', req.params)
-        update_add(update,
-                   'Tableau_App_Bit__c', opportunity,
-                   'tableau-bitness', req.params)
-
-        if update:
-            logger.info('Updating license information for %s : %s',
-                        key, str(update))
-            sf.Opportunity.update(opportunity['Id'], update)
-
         return data
-
 
 # pylint: disable=invalid-name
 database = DATABASE
@@ -222,25 +138,11 @@ router = Router()
 router.add_route(r'/hello\Z', HelloApplication())
 # license verify from the conductor
 router.add_route(r'/license\Z', LicenseApplication())
-# support application requst
-router.add_route(r'/support\Z', SupportApplication())
-# UX redirects for expiration
-router.add_route(r'/trial-expired\Z', SubscribeApplication())
-router.add_route(r'/license-expired\Z', SubscribeApplication())
-# GET redirects for the BUY|SUBSCRIBE button and POST handler
-router.add_route(r'/buy\Z|/subscribe\Z', SubscribeApplication())
-
-# register a user into the licensing system
-router.add_route(r'/api/register\Z', RegisterApplication())
-# verify a user into the licensing system
-router.add_route(r'/api/verify\Z', VerifyApplication())
-# submit (POST) handler for the website /trial form.
-router.add_route(r'/api/trial\Z', TrialRequestApplication())
 # called when the initial setup page is completed.
 router.add_route(r'/api/trial-start\Z', TrialStartApplication())
+
 router.add_redirect(r'/\Z', 'http://www.palette-software.com')
-# redirect the user's browser to an information page whenever the server
-# hasn't been able to contact licensing for a long time...
+
 unreachable = UnreachableApplication()
 router.add_route(r'/unreachable\Z|/licensing-unreachable\Z', unreachable)
 router.add_route(r'/licensing-unavailable\Z', unreachable) # old name
