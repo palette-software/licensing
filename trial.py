@@ -36,12 +36,10 @@ def unique_name(name, product=None):
     while True:
         result = License.get_first_by_name(to_try, product)
         if result is not None:
-            print "Result is not None"
             # name exists try the next numbered one$
             to_try = '{0}-{1}'.format(name, count)
             count = count + 1
         else:
-            print "Result is None"
             break
 
     return to_try
