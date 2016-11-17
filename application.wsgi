@@ -21,6 +21,7 @@ from slack_api import SlackAPI
 from stage import Stage
 from licensing import License
 from system import System
+from product import Product
 
 # currently is set to 'trust' for the loopback interface so use the old pw.
 DATABASE = 'postgresql://palette:palpass@localhost/licensedb'
@@ -65,23 +66,26 @@ def get_license_quantity(req):
 class LicenseApplication(BaseApp):
     """This application responds to the controller 'license verify'"""
 
-    @required_parameters('system-id', 'license-key')
+    @required_parameters('license-key')
     def service_POST(self, req):
         key = req.params['license-key']
-        entry = License.get_by_key(key)
+        product = None
+        product_key = ""
+        if 'product' in req.params:
+            product_key = req.params['product']
+            product = Product.get_by_key(product_key)
+
+        entry = License.get_by_key(key, product)
         if entry is None:
-            logger.error('Invalid license key: ' + key)
+            SlackAPI.error('Invalid license key for (' + product_key + '): ' + key + ' (' + req.remote_addr + ')' )
             raise exc.HTTPNotFound()
 
         update = {}
 
-        system_id = req.params['system-id']
-        if entry.system_id != system_id:
-            if entry.system_id:
-                logger.error('%s: System id from %s != DB %s',
-                             key, system_id, entry.system_id)
-            entry.system_id = system_id
-            update['System_ID__c'] = system_id
+        if product is not None and product.key != entry.product.key:
+            SlackAPI.error('Invalid license key for (' + product_key + '): ' + key + ' (' + req.remote_addr + ')' )
+            raise exc.HTTPNotFound()
+
 
         if 'license-type' in req.params:
             license_type = req.params['license-type']
@@ -115,6 +119,7 @@ class LicenseApplication(BaseApp):
         data = {'id': entry.id,
                 'trial': entry.istrial(),
                 'stage': Stage.get_by_id(entry.stageid).name,
+                'name': entry.name,
                 'expiration-time': str(entry.expiration_time)}
 
         return data
@@ -157,7 +162,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=8080)
     parser.add_argument('--pem', '--ssl-pem', default=None)
+    parser.add_argument('--slack')
     args = parser.parse_args()
+
+    SlackAPI.URL = args.slack
 
     application = TransLogger(application)
 

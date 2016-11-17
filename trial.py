@@ -24,7 +24,7 @@ PALETTE_ENT = 'Palette Enterprise'
 logger = logging.getLogger('licensing')
 
 # FIXME: locking + database transaction so that add() doesn't blow up...
-def unique_name(name):
+def unique_name(name, product=None):
     """ Lookup and get a unique name for the server based on
         what is already in the database
         The algorithm comes up with names in this format:
@@ -34,7 +34,7 @@ def unique_name(name):
     to_try = name
 
     while True:
-        result = License.get_by_name(to_try)
+        result = License.get_first_by_name(to_try, product)
         if result is not None:
             # name exists try the next numbered one$
             to_try = '{0}-{1}'.format(name, count)
@@ -68,7 +68,7 @@ def generate_license(contact, product,
     org = get_netloc(domain_only(email)).lower()
 
     if name is None:
-        name = unique_name(hostname_only(org))
+        name = unique_name(hostname_only(org), product)
     if stage_key is None:
         stage_key = 'STAGE-TRIAL-REQUESTED'
     stage = Stage.get_by_key(stage_key)
@@ -84,7 +84,7 @@ def generate_license(contact, product,
     entry.stageid = stage.id
 
     entry.registration_start_time = datetime.utcnow()
-    entry.productid = Product.get_by_key(Product.PRO_KEY).id
+    entry.productid = product.id
 
     # FIXME
     session = get_session()
@@ -160,7 +160,7 @@ class TrialStartApplication(BaseApp):
     initial setup page.
     The POST request comes from Palette Server (not the website)
     """
-    @required_parameters('system-id', 'license-key')
+    @required_parameters('license-key')
     def service_POST(self, req):
         """ Handle a Trial start
         """
@@ -169,13 +169,6 @@ class TrialStartApplication(BaseApp):
         if entry is None:
             logger.error('Invalid trial start key: ' + key)
             raise exc.HTTPNotFound()
-
-        system_id = req.params['system-id']
-        if entry.system_id and entry.system_id != system_id:
-            logger.error('Invalid trial start request for key {0}.'
-                         'System id from request {1} doesnt match DB {2}'\
-                   .format(key, system_id, entry.system_id))
-        entry.system_id = system_id
 
         # FIXME
         session = get_session()
@@ -218,4 +211,5 @@ class TrialStartApplication(BaseApp):
         return {'id': entry.id,
                 'trial': entry.istrial(),
                 'stage': entry.stage.name,
+                'name': entry.name,
                 'expiration-time': str(entry.expiration_time)}

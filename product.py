@@ -9,6 +9,7 @@ from mixin import BaseMixin
 
 PRO_KEY = 'PALETTE-PRO'
 ENT_KEY = 'PALETTE-ENT'
+INS_KEY = 'INSIGHT'
 
 class Product(Base, BaseMixin):
     # pylint: disable=no-init
@@ -17,6 +18,7 @@ class Product(Base, BaseMixin):
 
     PRO_KEY = PRO_KEY
     ENT_KEY = ENT_KEY
+    INS_KEY = INS_KEY
 
     id = Column(Integer, primary_key=True)
     key = Column(String)
@@ -25,7 +27,9 @@ class Product(Base, BaseMixin):
     defaults = [{'key' : PRO_KEY,
                  'name': 'Palette Pro for Tableau Server'},
                 {'key'  : ENT_KEY,
-                 'name': 'Palette Enterprise for Tableau Server'}]
+                 'name': 'Palette Enterprise for Tableau Server'},
+                {'key' : INS_KEY,
+                 'name': 'Palette Insight'}]
 
     @classmethod
     def get_by_id(cls, rowid):

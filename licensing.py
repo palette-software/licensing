@@ -32,9 +32,6 @@ class License(Base):
     # The tableau license count
     n = Column(Integer)
 
-    # Autogenrated unique system GUID of the Palette Server
-    system_id = Column(String)
-
     # Stage in try/buy workflow
     stageid = Column(Integer, ForeignKey("stage.id"))
 
@@ -129,10 +126,13 @@ class License(Base):
         return data
 
     @classmethod
-    def get_by_name(cls, name):
+    def get_first_by_name(cls, name, product=None):
         session = get_session()
         try:
-            return session.query(License).filter(License.name == name).one()
+            results = session.query(License).filter(License.name == name)
+            if product is not None:
+                results = results.filter(License.productid  == product.id)
+            return results.first()
         except NoResultFound:
             return None
 
@@ -146,10 +146,13 @@ class License(Base):
         return rows
 
     @classmethod
-    def get_by_key(cls, key):
+    def get_by_key(cls, key, product=None):
         session = get_session()
         try:
-            return session.query(License).filter(License.key == key).one()
+            results = session.query(License).filter(License.key == key)
+            if product is not None:
+                results = results.filter(License.productid == product.id)
+            return results.first()
         except NoResultFound:
             return None
 
