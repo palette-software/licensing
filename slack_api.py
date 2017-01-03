@@ -35,8 +35,3 @@ class SlackAPI(object):
     def error(cls, message):
         logger.error(message)
         cls.notify("*[ERROR]* " + message)
-
-
-    @classmethod
-    def URL(url):
-        cls.URL = url

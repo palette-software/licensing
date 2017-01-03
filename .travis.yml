@@ -1,0 +1,5 @@
+language: python
+python:
+- '2.7'
+install: yes # there is not any requirements.txt
+script: yes  # there is not any test
