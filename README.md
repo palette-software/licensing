@@ -1,34 +1,48 @@
 Licensing Server Code
+=====================
 
-Instllation steps
+Important note
+--------------
+
+Licensing is _disabled_ in the latest version of the Palette Software components.
+
+Installation steps
 -----------------
 
 Database Setup:
 
+```bash
 sudo apt-get install -y postgresql python-psycopg2 python-dateutil python-pip
 sudo -u postgres createuser --superuser palette
 sudo -u postgres createuser --superuser $USER
 sudo -u postgres createdb licensedb
+```
 
 Set the password for palette:
+
+```bash
     sudo -u postgres psql
     postgres=# \password palette
     Enter new password: palpass
     Enter it again:
     postgres=# \quit
+```
 
 ---
 Package Setup and configuration
 
+```bash
 sudo apt-get install -y autossh
 autossh -N -L 54321:localhost:5432 -i ~/.ssh/PaletteStandardKeyPair2014-02-16.pem ubuntu@licensing.palette-software.com
 
 sudo pip install sendwithus simple-salesforce stripe
+```
 
 Salesforce Configuration Security Token Setup
 ---------------------------------------------
+
 1. To setup salesforce you need to login with licensing@palette-software.com
-   username the appropiate password
+   username the appropriate password
 2. Go to your username dropdown on the top right and choose 'My Settings'
 3. Click on Change Password on the left (if necessary)
 4. Click on Reset My Security Token (if necessary)
@@ -38,29 +52,33 @@ Salesforce Configuration Security Token Setup
 
 Sendwithus Configuration
 ------------------------
+
 API Key:
+
 1. Go to sendwithus.com and login with developers@palette-software.com and
-   the appropiate password
+   the appropriate password
 2. Go to API settings on the bottom left and copy the Production API Key
 3. Save the API Key in the Licensing System Table (eg. SENDWITHUS-APIKEY)
 
 Templates:
+
 1. Go to Templates on the left menu
-2. Navigate to Licensiing Folder
+2. Navigate to Licensing Folder
 3. Templates for the licensing server are all located here.
 
-Drip Campains:
-1. Go to Drip Campaigs on the left menu
+Drip Campaigns:
+
+1. Go to Drip Campaigns on the left menu
 2. If you create new drip campaigns you must copy the drip campaign id
    and change the Licensing System Table SENDWITHUS
    eg. SENDWITHUS-TRIAL-REQUESTED-ID with the new ID
 
-
 Running licensing locally
 -------------------------
+
+```bash
 # add/replace this line in /etc/hosts
 127.0.0.1	localhost	licensing.palette-software.com
 
 sudo ./application.wsgi --port=443 --pem=\*
-
-
+```
