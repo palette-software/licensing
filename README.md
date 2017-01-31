@@ -23,7 +23,7 @@ Set the password for palette:
 ```bash
     sudo -u postgres psql
     postgres=# \password palette
-    Enter new password: palpass
+    Enter new password: <yourpass>
     Enter it again:
     postgres=# \quit
 ```
