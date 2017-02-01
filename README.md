@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/palette-software/palette-insight.svg?branch=master)](https://travis-ci.org/palette-software/palette-insight)
+
 Licensing Server Code
 =====================
 
